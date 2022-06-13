@@ -36,3 +36,14 @@ def test_geodesics_square_to_rectangle():
         n_geodesics=10, n_times=20, n_points=40
     )
     assert geodesics.shape == (10, 20, 40, 2), geodesics.shape
+
+
+def test_geodesics_circle_to_ellipse():
+    """Test that function geodesics_circle_to_ellipse runs.
+
+    And outputs correct shape.
+    """
+    geodesics = synthetic.geodesics_circle_to_ellipse(
+        n_geodesics=10, n_times=20, n_points=40
+    )
+    assert geodesics.shape == (10, 20, 40, 2), geodesics.shape

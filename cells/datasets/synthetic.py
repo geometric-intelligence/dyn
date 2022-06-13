@@ -109,3 +109,21 @@ def geodesics_square_to_rectangle(n_geodesics=10, n_times=20, n_points=40):
         geodesics[i_geodesic] = geodesic(times)
 
     return geodesics
+
+
+def geodesics_circle_to_ellipse(n_geodesics=10, n_times=20, n_points=40):
+    """Generate a dataset of geodesics that transform circles into ellipses."""
+    dim = 2
+    radii = np.random.normal(loc=5, scale=0.2, size=(n_geodesics,))
+    a = np.random.normal(loc=2, scale=0.1, size=(n_geodesics,))
+    b = np.random.normal(loc=10, scale=0.1, size=(n_geodesics,))
+
+    geodesics = gs.zeros((n_geodesics, n_times, n_points, dim))
+    times = gs.arange(0, 1, 1 / n_times)
+    for i_geodesic in range(n_geodesics):
+        start_circle = circle(n_points=n_points, radius=radii[i_geodesic])
+        end_ellipse = ellipse(n_points=n_points, a=a[i_geodesic], b=b[i_geodesic])
+        geodesic = METRIC.geodesic(initial_curve=start_circle, end_curve=end_ellipse)
+        geodesics[i_geodesic] = geodesic(times)
+
+    return geodesics
