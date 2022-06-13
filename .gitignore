@@ -1,6 +1,6 @@
 # Data
-datasets/retinal_mutated_cells/*
-datasets/single_border_protusion_cells/*
+cells/datasets/retinal_mutated_cells/*
+cells/datasets/single_border_protusion_cells/*
 
 # VScode config
 .DS_Store
