@@ -1,3 +1,10 @@
+# Data
+datasets/retinal_mutated_cells/*
+datasets/single_border_protusion_cells/*
+
+# VScode config
+.DS_Store
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
