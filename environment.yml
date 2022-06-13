@@ -18,3 +18,4 @@ dependencies:
     - jupyter
     - mat73
     - pre-commit
+    - torch>=1.1.9

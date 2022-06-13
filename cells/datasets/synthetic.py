@@ -19,10 +19,10 @@ def rectangle(n_points_height, n_points_length, height, length):
     rectangle = gs.zeros((n_points, 2))
 
     height_pos_axis = height * gs.linspace(-1, 1, n_points_height)
-    height_neg_axis = gs.flip(height_pos_axis)
+    height_neg_axis = gs.flip(height_pos_axis, axis=0)
 
     length_pos_axis = length * gs.linspace(-1, 1, n_points_length)
-    length_neg_axis = gs.flip(length_pos_axis)
+    length_neg_axis = gs.flip(length_pos_axis, axis=0)
 
     heights = height * gs.ones(n_points_height)
     minus_heights = -heights
