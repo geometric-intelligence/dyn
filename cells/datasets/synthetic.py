@@ -24,22 +24,21 @@ def rectangle(n_points_height, n_points_length, height, length):
     lengths = length * gs.ones(n_points_length)
     minus_lengths = -lengths
 
-    rectangle[: n_points_length - 1] = gs.vstack((length_pos_axis, minus_heights)).T[
-        :-1
-    ]
-    rectangle[n_points_length - 1 : n_points_length + n_points_height - 2] = gs.vstack(
-        (lengths, height_pos_axis)
-    ).T[:-1]
+    bottom = gs.vstack((length_pos_axis, minus_heights)).T[:-1]
+    right = gs.vstack((lengths, height_pos_axis)).T[:-1]
+    top = gs.vstack((length_neg_axis, heights)).T[:-1]
+    left = gs.vstack((minus_lengths, height_neg_axis)).T[:-1]
+
+    rectangle[: n_points_length - 1] = bottom
+    rectangle[n_points_length - 1 : n_points_length + n_points_height - 2] = right
     rectangle[
         n_points_length
         + n_points_height
         - 2 : 2 * n_points_length
         + n_points_height
         - 3
-    ] = gs.vstack((length_neg_axis, heights)).T[:-1]
-    rectangle[2 * n_points_length + n_points_height - 3 :] = gs.vstack(
-        (minus_lengths, height_neg_axis)
-    ).T[:-1]
+    ] = top
+    rectangle[2 * n_points_length + n_points_height - 3 :] = left
 
     return rectangle
 
