@@ -70,13 +70,13 @@ def unit_square(n_points_side):
     This function returns a discrete closed curve representing a
     unit square as a array of its 2D points, in counter-clockwise order.
     """
-    return rectangle(n_points_side, n_points_side)
+    return rectangle(n_points_side, n_points_side, 1, 1)
 
 
-def unit_circle(n_points_half):
+def unit_circle(n_points):
     """Return a circle as an array of 2D points.
 
     This function returns a discrete closed curve representing the
     unit circle, as an array of 2D points.
     """
-    return ellipse(n_points_half, 1, 1)
+    return ellipse(n_points, 1, 1)
