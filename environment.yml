@@ -8,7 +8,9 @@ dependencies:
   - numpy>=1.22.3
   - matplotlib>=3.5.1
   - pip:
+    - autograd
     - black
+    - black[jupyter]
     - flake8
     - flake8-docstrings
     - git+https://github.com/geomstats/geomstats.git
