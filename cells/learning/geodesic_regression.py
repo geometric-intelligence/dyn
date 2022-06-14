@@ -352,7 +352,9 @@ class GeodesicRegression(BaseEstimator):
         if hasattr(self.metric, "parallel_transport"):
 
             def vector_transport(tan_a, tan_b, base_point, _):
-                return self.metric.parallel_transport(tan_a, base_point, tan_b)
+                return self.metric.ladder_parallel_transport(tan_a, base_point, tan_b)[
+                    "transported_tangent_vec"
+                ]
 
         else:
 
@@ -413,7 +415,7 @@ class GeodesicRegression(BaseEstimator):
             current_loss.append(loss)
             current_grad = grad
 
-        self.intercept_ = self.space.projection(intercept_hat)
+        self.intercept_ = intercept_hat
         self.coef_ = self.space.to_tangent(coef_hat, self.intercept_)
 
         if self.verbose:
