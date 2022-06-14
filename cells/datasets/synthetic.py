@@ -73,8 +73,11 @@ def ellipse(n_points, a, b):
 
     This function returns a discrete closed curve representing the ellipse
     of equation: x**2/a**2 + y**2/b**2 =1.
+
     The discrete closed curve is represented by an array of 2D points
     in counter-clockwise order.
+
+    The ellipse starts at the point (1, 0).
 
     Notes
     -----
@@ -98,7 +101,7 @@ def ellipse_with_protusion(n_points, a, b, protusion_height):
     in counter-clockwise order.
     """
     ell = ellipse(n_points, a, b)
-    half_top_idx = 3 * n_points // 4 + n_points // 8
+    half_top_idx = n_points // 4
     protusion_half_length = n_points // 16
     protusion_start_idx = half_top_idx - protusion_half_length
     protusion_end_idx = half_top_idx + protusion_half_length
