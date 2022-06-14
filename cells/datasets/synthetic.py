@@ -8,7 +8,7 @@ CURVES_SPACE = DiscreteCurves(R2)
 METRIC = CURVES_SPACE.square_root_velocity_metric
 
 
-def rectangle(n_points_height, n_points_length, height, length):
+def rectangle(n_points_height, n_points_length, height, length, protusion=0):
     """Return a rectangle as an array of 2D points.
 
     This function returns a discrete closed curve representing a
@@ -48,6 +48,26 @@ def rectangle(n_points_height, n_points_length, height, length):
     return rectangle
 
 
+def rectangle_with_protusion(
+    n_points_height, n_points_length, height, length, protusion_height
+):
+    """Return a rectangle with a protusion on its top side as an array of 2D points.
+
+    The protusion simulates cells' protusions that appears during migration.
+
+    This function returns a discrete closed curve representing a
+    rectangle (height, length) as a array of its 2D points,
+    in counter-clockwise order.
+    """
+    rect = rectangle(n_points_height, n_points_length, height, length)
+    half_top_idx = n_points_length + n_points_height - 2 + n_points_length // 2
+    protusion_half_length = n_points_length // 5
+    protusion_start_idx = half_top_idx - protusion_half_length
+    protusion_end_idx = half_top_idx + protusion_half_length
+    rect[protusion_start_idx:protusion_end_idx] += protusion_height
+    return rect
+
+
 def ellipse(n_points, a, b):
     """Return an ellipse as an array of 2D points.
 
@@ -69,6 +89,23 @@ def ellipse(n_points, a, b):
     return ellipse
 
 
+def ellipse_with_protusion(n_points, a, b, protusion_height):
+    """Return an ellipse with a protusion on its top side as an array of 2D points.
+
+    This function returns a discrete closed curve representing the ellipse
+    of equation: x**2/a**2 + y**2/b**2 =1.
+    The discrete closed curve is represented by an array of 2D points
+    in counter-clockwise order.
+    """
+    ell = ellipse(n_points, a, b)
+    half_top_idx = 3 * n_points // 4 + n_points // 8
+    protusion_half_length = n_points // 16
+    protusion_start_idx = half_top_idx - protusion_half_length
+    protusion_end_idx = half_top_idx + protusion_half_length
+    ell[protusion_start_idx:protusion_end_idx] += protusion_height
+    return ell
+
+
 def square(n_points_side, side=1):
     """Return a square as an array of 2D points.
 
@@ -76,6 +113,20 @@ def square(n_points_side, side=1):
     unit square as a array of its 2D points, in counter-clockwise order.
     """
     return rectangle(n_points_side, n_points_side, side, side)
+
+
+def square_with_protusion(n_points_side, side=1, protusion_height=1):
+    """Return a square with a protusion on its top side as an array of 2D points.
+
+    The protusion simulates cells' protusions that appears during migration.
+
+    This function returns a discrete closed curve representing a
+    rectangle (height, length) as a array of its 2D points,
+    in counter-clockwise order.
+    """
+    return rectangle_with_protusion(
+        n_points_side, n_points_side, side, side, protusion_height
+    )
 
 
 def circle(n_points, radius=1):
@@ -87,7 +138,18 @@ def circle(n_points, radius=1):
     return ellipse(n_points, radius, radius)
 
 
-def geodesics_square_to_rectangle(n_geodesics=10, n_times=20, n_points=40):
+def circle_with_protusion(n_points, radius=1, protusion_height=0):
+    """Return a circle with a protusion on its top side as an array of 2D points.
+
+    This function returns a discrete closed curve representing the
+    unit circle, as an array of 2D points.
+    """
+    return ellipse_with_protusion(n_points, radius, radius, protusion_height)
+
+
+def geodesics_square_to_rectangle(
+    n_geodesics=10, n_times=20, n_points=40, protusion_height=0
+):
     """Generate a dataset of geodesics that transform squares into rectangles."""
     dim = 2
     n_points_side = n_points_lengh = n_points_heigh = n_points // 4 + 1
@@ -98,12 +160,17 @@ def geodesics_square_to_rectangle(n_geodesics=10, n_times=20, n_points=40):
     geodesics = gs.zeros((n_geodesics, n_times, n_points, dim))
     times = gs.arange(0, 1, 1 / n_times)
     for i_geodesic in range(n_geodesics):
-        start_square = square(n_points_side=n_points_side, side=sides[i_geodesic])
-        end_rect = rectangle(
+        start_square = square_with_protusion(
+            n_points_side=n_points_side,
+            side=sides[i_geodesic],
+            protusion_height=protusion_height,
+        )
+        end_rect = rectangle_with_protusion(
             n_points_height=n_points_heigh,
             n_points_length=n_points_lengh,
             height=heights[i_geodesic],
             length=lengths[i_geodesic],
+            protusion_height=protusion_height,
         )
         geodesic = METRIC.geodesic(initial_curve=start_square, end_curve=end_rect)
         geodesics[i_geodesic] = geodesic(times)
@@ -111,7 +178,9 @@ def geodesics_square_to_rectangle(n_geodesics=10, n_times=20, n_points=40):
     return geodesics
 
 
-def geodesics_circle_to_ellipse(n_geodesics=10, n_times=20, n_points=40):
+def geodesics_circle_to_ellipse(
+    n_geodesics=10, n_times=20, n_points=40, protusion_height=0
+):
     """Generate a dataset of geodesics that transform circles into ellipses."""
     dim = 2
     radii = np.random.normal(loc=1, scale=0.08, size=(n_geodesics,))
@@ -121,8 +190,17 @@ def geodesics_circle_to_ellipse(n_geodesics=10, n_times=20, n_points=40):
     geodesics = gs.zeros((n_geodesics, n_times, n_points, dim))
     times = gs.arange(0, 1, 1 / n_times)
     for i_geodesic in range(n_geodesics):
-        start_circle = circle(n_points=n_points, radius=radii[i_geodesic])
-        end_ellipse = ellipse(n_points=n_points, a=a[i_geodesic], b=b[i_geodesic])
+        start_circle = circle_with_protusion(
+            n_points=n_points,
+            radius=radii[i_geodesic],
+            protusion_height=protusion_height,
+        )
+        end_ellipse = ellipse_with_protusion(
+            n_points=n_points,
+            a=a[i_geodesic],
+            b=b[i_geodesic],
+            protusion_height=protusion_height,
+        )
         geodesic = METRIC.geodesic(initial_curve=start_circle, end_curve=end_ellipse)
         geodesics[i_geodesic] = geodesic(times)
 

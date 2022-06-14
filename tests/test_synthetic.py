@@ -9,9 +9,21 @@ def test_rectangle():
     assert rect.shape == (36, 2), rect.shape
 
 
+def test_rectangle_with_protusion():
+    """Test that function rectangle_with_protusion runs and outputs correct shape."""
+    rect = synthetic.rectangle_with_protusion(10, 10, 2, 3, 3)
+    assert rect.shape == (36, 2), rect.shape
+
+
 def test_square():
     """Test that function square runs and outputs correct shape."""
     square = synthetic.square(10)
+    assert square.shape == (36, 2), square.shape
+
+
+def test_square_with_protusion():
+    """Test that function square_with_protusion runs and outputs correct shape."""
+    square = synthetic.square_with_protusion(10, protusion_height=2)
     assert square.shape == (36, 2), square.shape
 
 
@@ -21,9 +33,21 @@ def test_ellipse():
     assert ell.shape == (20, 2), ell.shape
 
 
+def test_ellipse_with_protusion():
+    """Test that function ellipse_with_protusion runs and outputs correct shape."""
+    ell = synthetic.ellipse_with_protusion(20, 2, 3, protusion_height=2)
+    assert ell.shape == (20, 2), ell.shape
+
+
 def test_circle():
     """Test that function circle runs and outputs correct shape."""
     circle = synthetic.circle(20)
+    assert circle.shape == (20, 2), circle.shape
+
+
+def test_circle_with_protusion():
+    """Test that function circle_with_protusion runs and outputs correct shape."""
+    circle = synthetic.circle_with_protusion(20, protusion_height=2)
     assert circle.shape == (20, 2), circle.shape
 
 
