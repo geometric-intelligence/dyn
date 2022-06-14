@@ -19,10 +19,10 @@ def rectangle(n_points_height, n_points_length, height, length):
     rectangle = gs.zeros((n_points, 2))
 
     height_pos_axis = height * gs.linspace(-1, 1, n_points_height)
-    height_neg_axis = gs.flip(height_pos_axis)
+    height_neg_axis = gs.flip(height_pos_axis, axis=0)
 
     length_pos_axis = length * gs.linspace(-1, 1, n_points_length)
-    length_neg_axis = gs.flip(length_pos_axis)
+    length_neg_axis = gs.flip(length_pos_axis, axis=0)
 
     heights = height * gs.ones(n_points_height)
     minus_heights = -heights
@@ -84,16 +84,16 @@ def circle(n_points, radius=1):
     This function returns a discrete closed curve representing the
     unit circle, as an array of 2D points.
     """
-    return ellipse(n_points, 1 / radius, 1 / radius)
+    return ellipse(n_points, radius, radius)
 
 
 def geodesics_square_to_rectangle(n_geodesics=10, n_times=20, n_points=40):
     """Generate a dataset of geodesics that transform squares into rectangles."""
     dim = 2
     n_points_side = n_points_lengh = n_points_heigh = n_points // 4 + 1
-    sides = np.random.normal(loc=5, scale=0.2, size=(n_geodesics,))
-    heights = np.random.normal(loc=2, scale=0.1, size=(n_geodesics,))
-    lengths = np.random.normal(loc=10, scale=0.1, size=(n_geodesics,))
+    sides = np.random.normal(loc=1, scale=0.05, size=(n_geodesics,))
+    heights = np.random.normal(loc=0.4, scale=0.05, size=(n_geodesics,))
+    lengths = np.random.normal(loc=2, scale=0.05, size=(n_geodesics,))
 
     geodesics = gs.zeros((n_geodesics, n_times, n_points, dim))
     times = gs.arange(0, 1, 1 / n_times)
@@ -114,9 +114,9 @@ def geodesics_square_to_rectangle(n_geodesics=10, n_times=20, n_points=40):
 def geodesics_circle_to_ellipse(n_geodesics=10, n_times=20, n_points=40):
     """Generate a dataset of geodesics that transform circles into ellipses."""
     dim = 2
-    radii = np.random.normal(loc=10, scale=0.2, size=(n_geodesics,))
-    a = np.random.normal(loc=0.25, scale=0.05, size=(n_geodesics,))
-    b = np.random.normal(loc=0.1, scale=0.05, size=(n_geodesics,))
+    radii = np.random.normal(loc=1, scale=0.08, size=(n_geodesics,))
+    a = np.random.normal(loc=2, scale=0.05, size=(n_geodesics,))
+    b = np.random.normal(loc=0.5, scale=0.05, size=(n_geodesics,))
 
     geodesics = gs.zeros((n_geodesics, n_times, n_points, dim))
     times = gs.arange(0, 1, 1 / n_times)
