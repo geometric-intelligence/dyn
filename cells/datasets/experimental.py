@@ -88,14 +88,17 @@ def load_treated_osteosarcoma_cells(n_sampling_points=10):
 
 
 def load_mutated_retinal_cells(n_sampling_points=10):
-    """Load dataset of osteosarcoma cells (bone cancer cells).
+    """Load dataset of mutated retinal cells.
 
-    This cell dataset contains cell boundaries of mouse osteosarcoma
-    (bone cancer) cells. The dlm8 cell line is derived from dunn and is more
-    aggressive as a cancer. The cells have been treated with one of three
-    treatments : control (no treatment), jasp (jasplakinolide)
-    and cytd (cytochalasin D). These are drugs which perturb the cytoskelet
-    of the cells.
+    The cells are grouped by mutation in the dataset :
+    - the *control* cells are ARPE19,
+    - the cells treated with Akt mutation,
+    - and the ones treated with Mek mutation
+    - and the cells treated with the Ras mutation.
+
+    Additionally, in each of these classes, the cells are cultured on two surfaces :
+    - the *GDA* cells (simple glass)
+    - the *FN* ones (Fibronectin coated glass).
 
     Parameters
     ----------
@@ -106,13 +109,13 @@ def load_mutated_retinal_cells(n_sampling_points=10):
 
     Returns
     -------
-    cells : list of 650 planar discrete curves
+    cells : list of 3871 planar discrete curves
         Each curve represents the boundary of a cell in counterclockwise order,
         their lengths are not necessarily equal.
-    surfaces : list of 650 strings
-        List of the cell lines of each cell (dlm8 or dunn).
-    mutations : list of 650 strings
-        List of the treatments given to each cell (control, cytd or jasp).
+    surfaces : list of 3871 strings
+        List of the surfaces whre each cell has been cultivated.
+    mutations : list of 3871 strings
+        List of the mutations given to each cell .
     """
     cells = (
         open("cells/datasets/mutated_retinal_cells/cells.txt", "r").read().split("\n\n")
@@ -128,18 +131,12 @@ def load_mutated_retinal_cells(n_sampling_points=10):
         .split("\n")
     )
     for i, cell in enumerate(cells):
-        # command added to remove line break at the beginning of each cell
-        # cell = cell[2:]
         cell = cell.split("\n")
         curve = []
         for point in cell:
             coords = [int(coord) for coord in point.split()]
             curve.append(coords)
         cells[i] = gs.cast(gs.array(curve), gs.float32)
-
-    cells = cells[:-1]
-    surfaces = surfaces[:-1]  # command added to remove space at the end
-    mutations = mutations[:-1]  # command added to remove space at the end
 
     if n_sampling_points > 0:
         for i_cell, cell in enumerate(cells):
