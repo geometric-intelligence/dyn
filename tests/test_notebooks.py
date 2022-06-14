@@ -25,7 +25,7 @@ def _exec_notebook(path):
     subprocess.check_call(args)
 
 
-NOTEBOOKS_DIR = "notebooks"
+NOTEBOOKS_DIR = "cells/notebooks"
 paths = sorted(glob.glob(f"{NOTEBOOKS_DIR}/*.ipynb"))
 
 

@@ -13,4 +13,4 @@ dependencies:
     - jupyter
     - mat73
     - torch>=1.11
-    - r dev-requirements.txt
+    - -r dev-requirements.txt
