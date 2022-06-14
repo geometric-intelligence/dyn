@@ -1,5 +1,5 @@
 # Data
-cells/datasets/retinal_mutated_cells/*
+cells/datasets/mutated_retinal_cells/*
 cells/datasets/single_border_protusion_cells/*
 
 # VScode config

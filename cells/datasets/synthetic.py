@@ -1,4 +1,4 @@
-"""Utils to load datasets of cells."""
+"""Utils to load synthetic datasets of cells."""
 
 import geomstats.backend as gs
 import numpy as np
