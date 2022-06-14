@@ -9,13 +9,8 @@ dependencies:
   - matplotlib>=3.5.1
   - pip:
     - autograd
-    - black
-    - black[jupyter]
-    - flake8
-    - flake8-docstrings
     - git+https://github.com/geomstats/geomstats.git
-    - isort
     - jupyter
     - mat73
-    - pre-commit
-    - torch>=1.1.9
+    - torch>=1.11
+    - r dev-requirements.txt
