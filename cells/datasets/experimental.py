@@ -38,17 +38,17 @@ def _remove_consecutive_duplicates(curve, tol=1e-10):
     curve : discrete curve
     """
     dist = curve[1:] - curve[:-1]
-    dist_norm = gs.sqrt(gs.sum(gs.square(dist), axis=1))
+    dist_norm = gs.sqrt(gs.sum(dist**2, axis=1))
 
     if gs.any(dist_norm < tol):
         for i in range(len(curve) - 1):
-            if gs.sqrt(gs.sum(gs.square(curve[i + 1] - curve[i]), axis=0)) < tol:
+            if gs.sqrt(gs.sum((curve[i + 1] - curve[i]) ** 2, axis=0)) < tol:
                 curve[i + 1] = (curve[i] + curve[i + 2]) / 2
 
     return curve
 
 
-def load_treated_osteosarcoma_cells(n_sampling_points=0):
+def load_treated_osteosarcoma_cells(n_sampling_points=10):
     """Load dataset of osteosarcoma cells (bone cancer cells).
 
     This cell dataset contains cell boundaries of mouse osteosarcoma
@@ -77,12 +77,17 @@ def load_treated_osteosarcoma_cells(n_sampling_points=0):
     """
     cells, lines, treatments = data_utils.load_cells()
     if n_sampling_points > 0:
-        cells = _interpolate(cells, n_sampling_points)
-    cells = _remove_consecutive_duplicates(cells)
+        for i_cell, cell in enumerate(cells):
+            cells[i_cell] = _interpolate(cell, n_sampling_points)
+        cells = gs.stack(cells, axis=0)
+
+    for i_cell, cell in enumerate(cells):
+        cells[i_cell] = _remove_consecutive_duplicates(cell)
+
     return cells, lines, treatments
 
 
-def load_mutated_retinal_cells(n_sampling_points=0):
+def load_mutated_retinal_cells(n_sampling_points=10):
     """Load dataset of osteosarcoma cells (bone cancer cells).
 
     This cell dataset contains cell boundaries of mouse osteosarcoma
@@ -109,9 +114,19 @@ def load_mutated_retinal_cells(n_sampling_points=0):
     mutations : list of 650 strings
         List of the treatments given to each cell (control, cytd or jasp).
     """
-    cells = open("mutated_retinal_cells/cells.txt", "r").read().split("\n\n")
-    surfaces = open("mutated_retinal_cells/surfaces.txt", "r").read().split("\n")
-    mutations = open("mutated_retinal_cells/mutations.txt", "r").read().split("\n")
+    cells = (
+        open("cells/datasets/mutated_retinal_cells/cells.txt", "r").read().split("\n\n")
+    )
+    surfaces = (
+        open("cells/datasets/mutated_retinal_cells/surfaces.txt", "r")
+        .read()
+        .split("\n")
+    )
+    mutations = (
+        open("cells/datasets/mutated_retinal_cells/mutations.txt", "r")
+        .read()
+        .split("\n")
+    )
     for i, cell in enumerate(cells):
         # command added to remove line break at the beginning of each cell
         # cell = cell[2:]
@@ -127,7 +142,11 @@ def load_mutated_retinal_cells(n_sampling_points=0):
     mutations = mutations[:-1]  # command added to remove space at the end
 
     if n_sampling_points > 0:
-        cells = _interpolate(cells, n_sampling_points)
-    cells = _remove_consecutive_duplicates(cells)
+        for i_cell, cell in enumerate(cells):
+            cells[i_cell] = _interpolate(cell, n_sampling_points)
+        cells = gs.stack(cells, axis=0)
+
+    for i_cell, cell in enumerate(cells):
+        cells[i_cell] = _remove_consecutive_duplicates(cell)
 
     return cells, surfaces, mutations
