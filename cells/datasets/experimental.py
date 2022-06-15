@@ -5,6 +5,8 @@ import geomstats.datasets.utils as data_utils
 import numpy as np
 from geomstats.geometry.pre_shape import PreShapeSpace
 
+import cells.cells.features.basic as basic
+
 M_AMBIENT = 2
 
 
@@ -51,7 +53,7 @@ def _remove_consecutive_duplicates(curve, tol=1e-10):
     return curve
 
 
-def _project_in_shape_space(curve, base_curve):
+def _exhaustive_align(curve, base_curve):
     """Project a curve in shape space.
 
     This happens in 2 steps:
@@ -64,7 +66,6 @@ def _project_in_shape_space(curve, base_curve):
     """
     n_sampling_points = curve.shape[-2]
     preshape = PreShapeSpace(m_ambient=M_AMBIENT, k_landmarks=n_sampling_points)
-    curve = preshape.projection(curve)
 
     nb_sampling = len(curve)
     distances = gs.zeros(nb_sampling)
@@ -104,13 +105,20 @@ def load_treated_osteosarcoma_cells(n_cells=-1, n_sampling_points=10):
     Returns
     -------
     cells : list of 650 planar discrete curves
-        Each curve represents the boundary of a cell in counterclockwise order,
-        their lengths are not necessarily equal.
+        Each curve represents the boundary of a cell in counterclockwise order.
+        Their barycenters are fixed at 0 (translation has been removed).
+        Their lengths are not necessarily equal (scaling has not been removed).
+    cell_shapes : list of 650 planar discrete curves shapes
+        Each curve represents the boundary of a cell in counterclockwise order.
+        Their barycenters are fixed at 0 (translation has been removed).
+        Their lengths are fixed at 1 (scaling has been removed).
+        They are aligned in rotation to the first cell (rotation has been removed).
     lines : list of 650 strings
         List of the cell lines of each cell (dlm8 or dunn).
     treatments : list of 650 strings
         List of the treatments given to each cell (control, cytd or jasp).
     """
+    preshape = PreShapeSpace(m_ambient=M_AMBIENT, k_landmarks=n_sampling_points)
     cells, lines, treatments = data_utils.load_cells()
 
     if n_cells > 0:
@@ -132,10 +140,17 @@ def load_treated_osteosarcoma_cells(n_cells=-1, n_sampling_points=10):
     for i_cell, cell in enumerate(cells):
         cells[i_cell] = _remove_consecutive_duplicates(cell)
 
+    print("Cells: quotienting translation.")
+    cells = preshape.center(cells)
+
+    print("Cell shapes: also quotienting scaling (length) and rotation.")
     cell_shapes = gs.zeros_like(cells)
     print("Projecting in shape space.")
     for i_cell, cell in enumerate(cells):
-        cell_shapes[i_cell] = _project_in_shape_space(cell, cells[0])
+        cell_shapes[i_cell] = cell / basic.perimeter(cell)
+
+    for i_cell, cell_shape in enumerate(cell_shapes):
+        cell_shapes[i_cell] = _exhaustive_align(cell_shape, cell_shape[0])
 
     return cells, cell_shapes, lines, treatments
 
@@ -212,8 +227,8 @@ def load_mutated_retinal_cells(n_cells=-1, n_sampling_points=10):
         cells[i_cell] = _remove_consecutive_duplicates(cell)
 
     cell_shapes = gs.zeros_like(cells)
-    print("Projecting in shape space.")
-    for i_cell, cell in enumerate(cells):
-        cell_shapes[i_cell] = _project_in_shape_space(cell, cells[0])
+    # print("Projecting in shape space.")
+    # for i_cell, cell in enumerate(cells):
+    #     cell_shapes[i_cell] = _project_in_shape_space(cell, cells[0])
 
     return cells, cell_shapes, surfaces, mutations

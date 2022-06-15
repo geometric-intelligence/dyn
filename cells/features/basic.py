@@ -1,6 +1,6 @@
 """Compute basic shape features."""
 
-import numpy as np
+import geomstats.backend as gs
 
 
 def perimeter(xy):
@@ -12,9 +12,9 @@ def perimeter(xy):
         Polygon, such that:
         x = xy[:, 0]; y = xy[:, 1]
     """
-    xy = xy
-    xy1 = np.roll(xy, -1, axis=0)  # shift by -1
-    return np.sum(np.sqrt((xy1[:, 0] - xy[:, 0]) ** 2 + (xy1[:, 1] - xy[:, 1]) ** 2))
+    first_point = gs.expand_dims(gs.array(xy[0]), axis=0)
+    xy1 = gs.concatenate([xy[1:], first_point], axis=0)
+    return gs.sum(gs.sqrt((xy1[:, 0] - xy[:, 0]) ** 2 + (xy1[:, 1] - xy[:, 1]) ** 2))
 
 
 def area(xy):
@@ -26,7 +26,6 @@ def area(xy):
         Polygon, such that:
         x = xy[:, 0]; y = xy[:, 1]
     """
-    xy = xy
     n_points = len(xy)
     s = 0.0
     for i in range(n_points):
