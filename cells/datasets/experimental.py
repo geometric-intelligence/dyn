@@ -112,11 +112,13 @@ def load_treated_osteosarcoma_cells(n_cells=-1, n_sampling_points=10):
         List of the treatments given to each cell (control, cytd or jasp).
     """
     cells, lines, treatments = data_utils.load_cells()
+
     if n_cells > 0:
-        print(f"Selecting only a subset of {n_cells} / {len(cells)} cells.")
-        cells = cells[:n_cells]
-        lines = lines[:n_cells]
-        treatments = treatments[:n_cells]
+        print(f"Selecting only a random subset of {n_cells} / {len(cells)} cells.")
+        idx = sorted(gs.random.choice(gs.arange(0, n_cells, 1), size=10, replace=False))
+        cells = cells[idx]
+        lines = lines[idx]
+        treatments = treatments[idx]
 
     if n_sampling_points > 0:
         print(f"Interpolating: All cells get {n_sampling_points} samplings points")
@@ -128,11 +130,12 @@ def load_treated_osteosarcoma_cells(n_cells=-1, n_sampling_points=10):
     for i_cell, cell in enumerate(cells):
         cells[i_cell] = _remove_consecutive_duplicates(cell)
 
+    cell_shapes = gs.zeros_like(cells)
     print("Projecting in shape space.")
     for i_cell, cell in enumerate(cells):
-        cells[i_cell] = _project_in_shape_space(cell, cells[0])
+        cell_shapes[i_cell] = _project_in_shape_space(cell, cells[0])
 
-    return cells, lines, treatments
+    return cells, cell_shapes, lines, treatments
 
 
 def load_mutated_retinal_cells(n_cells=-1, n_sampling_points=10):
@@ -181,9 +184,10 @@ def load_mutated_retinal_cells(n_cells=-1, n_sampling_points=10):
 
     if n_cells > 0:
         print(f"Selecting only a subset of {n_cells} / {len(cells)} cells.")
-        cells = cells[:n_cells]
-        surfaces = surfaces[:n_cells]
-        mutations = mutations[:n_cells]
+        idx = sorted(gs.random.choice(gs.arange(0, n_cells, 1), size=10, replace=False))
+        cells = cells[idx]
+        surfaces = surfaces[idx]
+        mutations = mutations[idx]
 
     for i, cell in enumerate(cells):
         cell = cell.split("\n")
@@ -203,8 +207,9 @@ def load_mutated_retinal_cells(n_cells=-1, n_sampling_points=10):
     for i_cell, cell in enumerate(cells):
         cells[i_cell] = _remove_consecutive_duplicates(cell)
 
+    cell_shapes = gs.zeros_like(cells)
     print("Projecting in shape space.")
     for i_cell, cell in enumerate(cells):
-        cells[i_cell] = _project_in_shape_space(cell, cells[0])
+        cell_shapes[i_cell] = _project_in_shape_space(cell, cells[0])
 
-    return cells, surfaces, mutations
+    return cells, cell_shapes, surfaces, mutations
