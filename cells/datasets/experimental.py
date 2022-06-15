@@ -3,6 +3,9 @@
 
 import geomstats.backend as gs
 import geomstats.datasets.utils as data_utils
+from geomstats.geometry.pre_shape import PreShapeSpace
+
+M_AMBIENT = 2
 
 
 def _interpolate(curve, n_sampling_points):
@@ -20,7 +23,7 @@ def _interpolate(curve, n_sampling_points):
     old_length = curve.shape[0]
     interpolation = gs.zeros((n_sampling_points, 2))
     incr = old_length / n_sampling_points
-    pos = 0
+    pos = gs.array(0.0, dtype=gs.float32)
     for i in range(n_sampling_points):
         index = int(gs.floor(pos))
         interpolation[i] = curve[index] + (pos - index) * (
@@ -46,6 +49,37 @@ def _remove_consecutive_duplicates(curve, tol=1e-10):
                 curve[i + 1] = (curve[i] + curve[i + 2]) / 2
 
     return curve
+
+
+def _project_in_shape_space(curve, base_curve):
+    """Project a curve in shape space.
+
+    This happens in 2 steps:
+    - remove translation (and scaling?) by projecting in pre-shape space.
+    - remove rotation by exhaustive alignment minimizing the L² distance.
+
+    Returns
+    -------
+    aligned_curve : discrete curve
+    """
+    n_sampling_points = curve.shape[-2]
+    preshape = PreShapeSpace(m_ambient=M_AMBIENT, k_landmarks=n_sampling_points)
+    curve = preshape.projection(curve)
+
+    nb_sampling = len(curve)
+    distances = gs.zeros(nb_sampling)
+    for shift in range(nb_sampling):
+        reparametrized = [curve[(i + shift) % nb_sampling] for i in range(nb_sampling)]
+        aligned = preshape.align(point=reparametrized, base_point=base_curve)
+        distances[shift] = preshape.norm(gs.array(aligned) - gs.array(base_curve))
+    shift_min = gs.argmin(distances)
+    reparametrized_min = [
+        curve[(i + shift_min) % nb_sampling] for i in range(nb_sampling)
+    ]
+    aligned_curve = preshape.embedding_metric.align(
+        point=reparametrized_min, base_point=base_curve
+    )
+    return aligned_curve
 
 
 def load_treated_osteosarcoma_cells(n_sampling_points=10):
@@ -77,12 +111,18 @@ def load_treated_osteosarcoma_cells(n_sampling_points=10):
     """
     cells, lines, treatments = data_utils.load_cells()
     if n_sampling_points > 0:
+        print(f"Interpolating: All cells get {n_sampling_points} samplings points")
         for i_cell, cell in enumerate(cells):
             cells[i_cell] = _interpolate(cell, n_sampling_points)
         cells = gs.stack(cells, axis=0)
 
+    print("Removing potential duplicate points.")
     for i_cell, cell in enumerate(cells):
         cells[i_cell] = _remove_consecutive_duplicates(cell)
+
+    print("Projecting in shape space.")
+    for i_cell, cell in enumerate(cells):
+        cells[i_cell] = _project_in_shape_space(cell, cells[0])
 
     return cells, lines, treatments
 
@@ -139,11 +179,17 @@ def load_mutated_retinal_cells(n_sampling_points=10):
         cells[i] = gs.cast(gs.array(curve), gs.float32)
 
     if n_sampling_points > 0:
+        print(f"Interpolating: All cells get {n_sampling_points} samplings points")
         for i_cell, cell in enumerate(cells):
             cells[i_cell] = _interpolate(cell, n_sampling_points)
         cells = gs.stack(cells, axis=0)
 
+    print("Removing potential duplicate points.")
     for i_cell, cell in enumerate(cells):
         cells[i_cell] = _remove_consecutive_duplicates(cell)
+
+    print("Projecting in shape space.")
+    for i_cell, cell in enumerate(cells):
+        cells[i_cell] = _project_in_shape_space(cell, cells[0])
 
     return cells, surfaces, mutations
