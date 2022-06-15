@@ -1,6 +1,9 @@
 """Test functions in the experimental module."""
 
+import numpy as np
+
 import cells.datasets.experimental as experimental
+import cells.features.basic as basic
 
 
 def test_load_treated_osteosarcoma_cells():
@@ -22,6 +25,8 @@ def test_load_treated_osteosarcoma_cells():
     assert cells.shape == (n_cells, n_sampling_points, 2), cells.shape
     assert len(lines) == n_cells, len(lines)
     assert len(treatments) == n_cells, len(treatments)
+    for cell in cell_shapes:
+        assert np.allclose(basic.perimeter(cell), 1.0)
 
 
 def test_load_mutated_retinal_cells():
@@ -38,3 +43,5 @@ def test_load_mutated_retinal_cells():
     assert cells.shape == (n_cells, n_sampling_points, 2), cells.shape
     assert len(surfaces) == n_cells, len(surfaces)
     assert len(mutations) == n_cells, len(mutations)
+    for cell in cell_shapes:
+        assert np.allclose(basic.perimeter(cell), 1.0)
