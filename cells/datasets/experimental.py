@@ -69,20 +69,22 @@ def _project_in_shape_space(curve, base_curve):
     nb_sampling = len(curve)
     distances = gs.zeros(nb_sampling)
     for shift in range(nb_sampling):
-        reparametrized = [curve[(i + shift) % nb_sampling] for i in range(nb_sampling)]
+        reparametrized = gs.array(
+            [curve[(i + shift) % nb_sampling] for i in range(nb_sampling)]
+        )
         aligned = preshape.align(point=reparametrized, base_point=base_curve)
-        distances[shift] = preshape.norm(gs.array(aligned) - gs.array(base_curve))
+        distances[shift] = preshape.embedding_metric.norm(
+            gs.array(aligned) - gs.array(base_curve)
+        )
     shift_min = gs.argmin(distances)
-    reparametrized_min = [
-        curve[(i + shift_min) % nb_sampling] for i in range(nb_sampling)
-    ]
-    aligned_curve = preshape.embedding_metric.align(
-        point=reparametrized_min, base_point=base_curve
+    reparametrized_min = gs.array(
+        [curve[(i + shift_min) % nb_sampling] for i in range(nb_sampling)]
     )
+    aligned_curve = preshape.align(point=reparametrized_min, base_point=base_curve)
     return aligned_curve
 
 
-def load_treated_osteosarcoma_cells(n_sampling_points=10):
+def load_treated_osteosarcoma_cells(n_cells=-1, n_sampling_points=10):
     """Load dataset of osteosarcoma cells (bone cancer cells).
 
     This cell dataset contains cell boundaries of mouse osteosarcoma
@@ -110,6 +112,12 @@ def load_treated_osteosarcoma_cells(n_sampling_points=10):
         List of the treatments given to each cell (control, cytd or jasp).
     """
     cells, lines, treatments = data_utils.load_cells()
+    if n_cells > 0:
+        print(f"Selecting only a subset of {n_cells} / {len(cells)} cells.")
+        cells = cells[:n_cells]
+        lines = lines[:n_cells]
+        treatments = treatments[:n_cells]
+
     if n_sampling_points > 0:
         print(f"Interpolating: All cells get {n_sampling_points} samplings points")
         for i_cell, cell in enumerate(cells):
@@ -127,7 +135,7 @@ def load_treated_osteosarcoma_cells(n_sampling_points=10):
     return cells, lines, treatments
 
 
-def load_mutated_retinal_cells(n_sampling_points=10):
+def load_mutated_retinal_cells(n_cells=-1, n_sampling_points=10):
     """Load dataset of mutated retinal cells.
 
     The cells are grouped by mutation in the dataset :
@@ -170,6 +178,13 @@ def load_mutated_retinal_cells(n_sampling_points=10):
         .read()
         .split("\n")
     )
+
+    if n_cells > 0:
+        print(f"Selecting only a subset of {n_cells} / {len(cells)} cells.")
+        cells = cells[:n_cells]
+        surfaces = surfaces[:n_cells]
+        mutations = mutations[:n_cells]
+
     for i, cell in enumerate(cells):
         cell = cell.split("\n")
         curve = []
