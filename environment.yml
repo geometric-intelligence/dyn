@@ -12,5 +12,6 @@ dependencies:
     - git+https://github.com/geomstats/geomstats.git
     - jupyter
     - mat73
+    - numba
     - torch>=1.11
     - -r dev-requirements.txt
