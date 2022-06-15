@@ -1,8 +1,8 @@
 """Utils to load experimental datasets of cells."""
 
-
 import geomstats.backend as gs
 import geomstats.datasets.utils as data_utils
+import numpy as np
 from geomstats.geometry.pre_shape import PreShapeSpace
 
 M_AMBIENT = 2
@@ -115,10 +115,12 @@ def load_treated_osteosarcoma_cells(n_cells=-1, n_sampling_points=10):
 
     if n_cells > 0:
         print(f"Selecting only a random subset of {n_cells} / {len(cells)} cells.")
-        idx = sorted(gs.random.choice(gs.arange(0, n_cells, 1), size=10, replace=False))
-        cells = cells[idx]
-        lines = lines[idx]
-        treatments = treatments[idx]
+        indices = sorted(
+            np.random.choice(gs.arange(0, len(cells), 1), size=n_cells, replace=False)
+        )
+        cells = [cells[idx] for idx in indices]
+        lines = [lines[idx] for idx in indices]
+        treatments = [treatments[idx] for idx in indices]
 
     if n_sampling_points > 0:
         print(f"Interpolating: All cells get {n_sampling_points} samplings points")
@@ -184,10 +186,12 @@ def load_mutated_retinal_cells(n_cells=-1, n_sampling_points=10):
 
     if n_cells > 0:
         print(f"Selecting only a subset of {n_cells} / {len(cells)} cells.")
-        idx = sorted(gs.random.choice(gs.arange(0, n_cells, 1), size=10, replace=False))
-        cells = cells[idx]
-        surfaces = surfaces[idx]
-        mutations = mutations[idx]
+        indices = sorted(
+            np.random.choice(gs.arange(0, len(cells), 1), size=n_cells, replace=False)
+        )
+        cells = [cells[idx] for idx in indices]
+        surfaces = [surfaces[idx] for idx in indices]
+        mutations = [mutations[idx] for idx in indices]
 
     for i, cell in enumerate(cells):
         cell = cell.split("\n")

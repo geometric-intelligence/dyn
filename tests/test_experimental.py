@@ -11,7 +11,12 @@ def test_load_treated_osteosarcoma_cells():
     n_sampling_points = 10
     n_cells = 5
 
-    cells, lines, treatments = experimental.load_treated_osteosarcoma_cells(
+    (
+        cells,
+        cell_shapes,
+        lines,
+        treatments,
+    ) = experimental.load_treated_osteosarcoma_cells(
         n_cells=n_cells, n_sampling_points=n_sampling_points
     )
     assert cells.shape == (n_cells, n_sampling_points, 2), cells.shape
@@ -27,7 +32,7 @@ def test_load_mutated_retinal_cells():
     n_sampling_points = 10
     n_cells = 5
 
-    cells, surfaces, mutations = experimental.load_mutated_retinal_cells(
+    cells, cell_shapes, surfaces, mutations = experimental.load_mutated_retinal_cells(
         n_cells=n_cells, n_sampling_points=n_sampling_points
     )
     assert cells.shape == (n_cells, n_sampling_points, 2), cells.shape

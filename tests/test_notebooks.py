@@ -1,6 +1,7 @@
 """Unit tests for the notebooks."""
 
 import glob
+import os
 import subprocess
 import tempfile
 
@@ -26,10 +27,13 @@ def _exec_notebook(path):
 
 
 NOTEBOOKS_DIR = "cells/notebooks"
+PATHS_TO_SKIP = os.path.join(NOTEBOOKS_DIR, "explore_experimental_datasets.ipynb")
 paths = sorted(glob.glob(f"{NOTEBOOKS_DIR}/*.ipynb"))
 
 
 @pytest.mark.parametrize("path", paths)
 def test_notebook(path):
     """Test that the notebook at path runs without bug."""
+    if path in PATHS_TO_SKIP:
+        pytest.skip()
     _exec_notebook(path)
