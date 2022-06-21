@@ -102,7 +102,7 @@ def preprocess(cells, labels_a, labels_b, n_cells, n_sampling_points):
         Number of sampling points along the boundary of each cell.
     """
     if n_cells > 0:
-        print(f"Selecting only a random subset of {n_cells} / {len(cells)} cells.")
+        print(f"... Selecting only a random subset of {n_cells} / {len(cells)} cells.")
         indices = sorted(
             np.random.choice(gs.arange(0, len(cells), 1), size=n_cells, replace=False)
         )
@@ -111,24 +111,27 @@ def preprocess(cells, labels_a, labels_b, n_cells, n_sampling_points):
         labels_b = [labels_b[idx] for idx in indices]
 
     if n_sampling_points > 0:
-        print(f"Interpolating: All cells get {n_sampling_points} samplings points")
+        print(
+            "... Interpolating:"
+            f"Cell boundaries have {n_sampling_points} samplings points."
+        )
         for i_cell, cell in enumerate(cells):
             cells[i_cell] = _interpolate(cell, n_sampling_points)
         cells = gs.stack(cells, axis=0)
 
-    print("Removing potential duplicate points.")
+    print("... Removing potential duplicate sampling points on cell boundaries.")
     for i_cell, cell in enumerate(cells):
         cells[i_cell] = _remove_consecutive_duplicates(cell)
 
-    print("Cells: quotienting translation.")
+    print("\n- Cells and cell shapes: quotienting translation.")
     cells = cells - gs.mean(cells, axis=-2)[..., None, :]
 
-    print("Cell shapes: quotienting scaling (length).")
+    print("- Cell shapes: quotienting scaling (length).")
     cell_shapes = gs.zeros_like(cells)
     for i_cell, cell in enumerate(cells):
         cell_shapes[i_cell] = cell / basic.perimeter(cell)
 
-    print("Cell shapes: quotienting rotation.")
+    print("- Cell shapes: quotienting rotation.")
     for i_cell, cell_shape in enumerate(cell_shapes):
         cell_shapes[i_cell] = _exhaustive_align(cell_shape, cell_shapes[0])
 
