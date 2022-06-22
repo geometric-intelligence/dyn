@@ -9,7 +9,7 @@ dependencies:
   - matplotlib>=3.5.1
   - pip:
     - autograd
-    - git+https://github.com/geomstats/geomstats.git
+    - git+https://github.com/geomstats/geomstats.git@curv-refactor2
     - jupyter
     - mat73
     - numba
