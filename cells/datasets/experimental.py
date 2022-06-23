@@ -112,7 +112,7 @@ def preprocess(cells, labels_a, labels_b, n_cells, n_sampling_points):
 
     if n_sampling_points > 0:
         print(
-            "... Interpolating:"
+            "... Interpolating: "
             f"Cell boundaries have {n_sampling_points} samplings points."
         )
         for i_cell, cell in enumerate(cells):
