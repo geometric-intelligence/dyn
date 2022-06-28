@@ -35,7 +35,7 @@ def _interpolate(curve, n_sampling_points):
     return interpolation
 
 
-def _remove_consecutive_duplicates(curve, tol=1e-10):
+def _remove_consecutive_duplicates(curve, tol=1e-2):
     """Preprocess curve to ensure that there are no consecutive duplicate points.
 
     Returns
