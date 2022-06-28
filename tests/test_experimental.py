@@ -2,8 +2,8 @@
 
 import numpy as np
 
-import cells.datasets.experimental as experimental
-import cells.features.basic as basic
+import dyn.datasets.experimental as experimental
+import dyn.features.basic as basic
 
 
 def test_load_treated_osteosarcoma_cells():

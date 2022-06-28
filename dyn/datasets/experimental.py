@@ -5,7 +5,7 @@ import geomstats.datasets.utils as data_utils
 import numpy as np
 from geomstats.geometry.pre_shape import PreShapeSpace
 
-import cells.cells.features.basic as basic
+import dyn.dyn.features.basic as basic
 
 M_AMBIENT = 2
 

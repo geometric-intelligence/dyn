@@ -2,7 +2,7 @@
 
 import geomstats.backend as gs
 
-import cells.features.basic as basic
+import dyn.features.basic as basic
 
 
 def test_perimeter():
