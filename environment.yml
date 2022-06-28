@@ -8,7 +8,7 @@ dependencies:
   - matplotlib>=3.5.1
   - pip:
     - autograd
-    - git+https://github.com/ninamiolane/geomstats.git
+    - git+https://github.com/ninamiolane/geomstats.git@closed-curv
     - jupyter
     - mat73
     - numba
