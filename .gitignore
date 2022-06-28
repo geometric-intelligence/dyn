@@ -1,9 +1,9 @@
 # Data
-cells/datasets/mutated_retinal_cells/*
-cells/datasets/mutated_retinal_cells.zip
-cells/datasets/single_border_protusion_cells/*
-cells/datasets/single_border_protusion_cells.zip
-cells/datasets/drug_surviving_cells/*
+dyn/datasets/mutated_retinal_cells/*
+dyn/datasets/mutated_retinal_cells.zip
+dyn/datasets/single_border_protusion_cells/*
+dyn/datasets/single_border_protusion_cells.zip
+dyn/datasets/drug_surviving_cells/*
 
 # VScode config
 .DS_Store

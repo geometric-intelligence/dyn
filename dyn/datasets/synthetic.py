@@ -5,7 +5,7 @@ import numpy as np
 from geomstats.geometry.discrete_curves import R2, DiscreteCurves
 
 CURVES_SPACE = DiscreteCurves(R2)
-METRIC = CURVES_SPACE.square_root_velocity_metric
+METRIC = CURVES_SPACE.srv_metric
 
 
 def rectangle(n_points_height, n_points_length, height, length, protusion=0):

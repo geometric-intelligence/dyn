@@ -1,6 +1,6 @@
 """Test functions in the synthetic module."""
 
-import cells.datasets.synthetic as synthetic
+import dyn.datasets.synthetic as synthetic
 
 
 def test_rectangle():
