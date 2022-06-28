@@ -212,15 +212,15 @@ def load_mutated_retinal_cells(n_cells=-1, n_sampling_points=10):
         List of the mutations given to each cell .
     """
     cells = (
-        open("cells/datasets/mutated_retinal_cells/cells.txt", "r").read().split("\n\n")
+        open("dyn/datasets/mutated_retinal_cells/cells.txt", "r").read().split("\n\n")
     )
     surfaces = (
-        open("cells/datasets/mutated_retinal_cells/surfaces.txt", "r")
+        open("dyn/datasets/mutated_retinal_cells/surfaces.txt", "r")
         .read()
         .split("\n")
     )
     mutations = (
-        open("cells/datasets/mutated_retinal_cells/mutations.txt", "r")
+        open("dyn/datasets/mutated_retinal_cells/mutations.txt", "r")
         .read()
         .split("\n")
     )
