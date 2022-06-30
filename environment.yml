@@ -4,7 +4,6 @@ channels:
 dependencies:
   - python=3.8
   - pip
-  - numpy>=1.22.3
   - matplotlib>=3.5.1
   - pip:
     - autograd
@@ -12,5 +11,6 @@ dependencies:
     - jupyter
     - mat73
     - numba
+    - numpy>=1.23.0
     - torch>=1.11
     - -r dev-requirements.txt
