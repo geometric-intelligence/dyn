@@ -27,7 +27,9 @@ def _tiff_to_list(tiff_path):
     """
     img_stack = skio.imread(tiff_path, plugin="tifffile")
     cell_contours = []
+    cell_imgs = []
     for img in img_stack:
+        cell_imgs.append(img)
         thresh = threshold_otsu(img)
         binary = img > thresh
         contours = measure.find_contours(binary, 0.8)
@@ -36,7 +38,7 @@ def _tiff_to_list(tiff_path):
         index_max_length = lengths.index(max_length)
         cell_contours.append(contours[index_max_length])
 
-    return cell_contours
+    return cell_contours, cell_imgs
 
 def _interpolate(curve, n_sampling_points):
     """Interpolate a discrete curve with nb_points from a discrete curve.
@@ -264,29 +266,66 @@ def load_mutated_retinal_cells(n_cells=-1, n_sampling_points=10):
     return preprocess(cells, surfaces, mutations, n_cells, n_sampling_points)
 
 
-def load_trajectory_of_border_cells(n_trajectories=-1, n_sampling_points=10, root_dir="/Users/ninamiolane/code/dyn/dyn/"):
+def load_trajectory_of_border_cells(n_sampling_points=10):
     """Load trajectories (or time-series) of border cells.
     
     Notes
     -----
-    There are 25 images per .tiff video.
-    
-    """
-    list_tifs = glob.glob(os.path.join(root_dir, "datasets/single_border_protusion_cells/*.tif"))
-    n_trajectories = len(list_tifs)
-    center_trajectories = gs.zeros((n_trajectories, 25, 2))
-    shape_trajectories = gs.zeros((n_trajectories, 25, n_sampling_points, 2))
-    print(list_tifs)
-    for i_traj, video_path in enumerate(list_tifs):
-        print(f"Processing {i_traj}/{n_trajectories}.")
-        print(f"Converting {video_path} into list of cell contours...")
-        cell_contours = _tiff_to_list(video_path)
+    There are 25 images (frames) per .tif video.
+    There are 16 videos (trajectories).
 
-        for i_frame, contour in enumerate(cell_contours):
+    Parameters
+    ----------
+    n_sampling_points : int
+        Number of points sampled along the contour of a cell.
+
+    Returns
+    -------
+    center_trajectories : array-like, shape=[16, 25, 2]
+        2D coordinates of the barycenter of each cell's contours,
+        for each of the 16 videos, for each of the 25 frames per video.
+    shape_trajectories : array-like, shape=[16, 25, n_sampling_points, 2]
+        2D coordinates of the sampling points defining the contour of each cell,
+        for each of the 16 videos, for each of the 25 frames per video.
+    labels : array-like, shape=[16,]
+        Phenotype associated with each trajectory (video).
+    """
+    datasets_dir = os.path.dirname(os.path.realpath(__file__))
+    list_tifs = glob.glob(os.path.join(datasets_dir, "single_border_protusion_cells/*.tif"))
+    n_trajectories = len(list_tifs)
+    one_img_stack = skio.imread(list_tifs[0], plugin="tifffile")
+    n_time_points, height, width = one_img_stack.shape
+    print(n_time_points, height, width)
+
+    center_trajectories = gs.zeros((n_trajectories, n_time_points, 2))
+    shape_trajectories = gs.zeros((n_trajectories, n_time_points, n_sampling_points, 2))
+    img_trajectories = gs.zeros((n_trajectories, n_time_points, height, width))
+    labels = []
+    for i_traj, video_path in enumerate(list_tifs):
+        video_name = os.path.basename(video_path)
+        print(f"\n Processing {i_traj+1}/{n_trajectories} trajectories.")
+        
+        print(f"Converting {video_name} into list of cell contours...")
+        cell_contours, cell_imgs = _tiff_to_list(video_path)
+        
+        labels.append(int(video_name.split("_")[0]))
+        for i_contour, (contour, img) in enumerate(zip(cell_contours, cell_imgs)):
+            #print(type(contour))
+            #print(contour)
             interpolated = _interpolate(contour, n_sampling_points)
             cleaned = _remove_consecutive_duplicates(interpolated)
             center = gs.mean(cleaned, axis=-2)
             centered = cleaned - center[..., None, :]
-            center_trajectories[i_traj, i_frame] = center
-            shape_trajectories[i_traj, i_frame] = centered
-    return center_trajectories, shape_trajectories
+            center_trajectories[i_traj, i_contour] = center
+            shape_trajectories[i_traj, i_contour] = centered
+            #print(img.shape)
+            if img.shape != (height, width):
+                print(
+                    f"Found image of a different size: {img.shape} instead of {height, width}. Skipped image (not cell contours).")
+                continue
+            img_trajectories[i_traj, i_contour] = gs.array(img.astype(float).T)
+#     center_trajectories = gs.stack(center_trajectories, axis=0)
+#     shape_trajectories = gs.stack(shape_trajectories, axis=0)
+    #img_trajectories = gs.stack(img_trajectories, axis=0)
+    labels = gs.array(labels)
+    return center_trajectories, shape_trajectories, img_trajectories, labels
