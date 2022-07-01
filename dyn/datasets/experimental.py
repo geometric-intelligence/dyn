@@ -1,13 +1,50 @@
 """Utils to load experimental datasets of cells."""
 
+import glob
+import os
+
 import geomstats.backend as gs
 import geomstats.datasets.utils as data_utils
 import numpy as np
+import skimage.io as skio
 from geomstats.geometry.pre_shape import PreShapeSpace
+from skimage import measure
+from skimage.filters import threshold_otsu
 
 import dyn.dyn.features.basic as basic
 
 M_AMBIENT = 2
+
+
+def _tif_video_to_lists(tif_path):
+    """Convert a cell video into two trajectories of contours and images.
+
+    Parameters
+    ----------
+    tif_path : absolute path of video in .tif format.
+
+    Returns
+    -------
+    contours_list : list of arrays
+        List of 2D coordinates of points defining the contours of each cell
+        within the video.
+    imgs_list : list of array
+        List of images in the input video.
+    """
+    img_stack = skio.imread(tif_path, plugin="tifffile")
+    contours_list = []
+    imgs_list = []
+    for img in img_stack:
+        imgs_list.append(img)
+        thresh = threshold_otsu(img)
+        binary = img > thresh
+        contours = measure.find_contours(binary, 0.8)
+        lengths = [len(c) for c in contours]
+        max_length = max(lengths)
+        index_max_length = lengths.index(max_length)
+        contours_list.append(contours[index_max_length])
+
+    return contours_list, imgs_list
 
 
 def _interpolate(curve, n_sampling_points):
@@ -15,24 +52,25 @@ def _interpolate(curve, n_sampling_points):
 
     Parameters
     ----------
-    curve :
+    curve : array-like, shape=[n_points, 2]
     n_sampling_points : int
 
     Returns
     -------
-    interpolation : discrete curve with nb_points points
+    interpolation : array-like, shape=[n_sampling_points, 2]
+       Discrete curve with n_sampling_points
     """
     old_length = curve.shape[0]
-    interpolation = gs.zeros((n_sampling_points, 2))
+    interpolation = np.zeros((n_sampling_points, 2))
     incr = old_length / n_sampling_points
-    pos = gs.array(0.0, dtype=gs.float32)
+    pos = np.array(0.0, dtype=np.float32)
     for i in range(n_sampling_points):
-        index = int(gs.floor(pos))
+        index = int(np.floor(pos))
         interpolation[i] = curve[index] + (pos - index) * (
             curve[(index + 1) % old_length] - curve[index]
         )
         pos += incr
-    return interpolation
+    return gs.array(interpolation, dtype=gs.float32)
 
 
 def _remove_consecutive_duplicates(curve, tol=1e-2):
@@ -215,14 +253,10 @@ def load_mutated_retinal_cells(n_cells=-1, n_sampling_points=10):
         open("dyn/datasets/mutated_retinal_cells/cells.txt", "r").read().split("\n\n")
     )
     surfaces = (
-        open("dyn/datasets/mutated_retinal_cells/surfaces.txt", "r")
-        .read()
-        .split("\n")
+        open("dyn/datasets/mutated_retinal_cells/surfaces.txt", "r").read().split("\n")
     )
     mutations = (
-        open("dyn/datasets/mutated_retinal_cells/mutations.txt", "r")
-        .read()
-        .split("\n")
+        open("dyn/datasets/mutated_retinal_cells/mutations.txt", "r").read().split("\n")
     )
 
     for i, cell in enumerate(cells):
@@ -234,3 +268,68 @@ def load_mutated_retinal_cells(n_cells=-1, n_sampling_points=10):
         cells[i] = gs.cast(gs.array(curve), gs.float32)
 
     return preprocess(cells, surfaces, mutations, n_cells, n_sampling_points)
+
+
+def load_trajectory_of_border_cells(n_sampling_points=10):
+    """Load trajectories (or time-series) of border cells.
+
+    Notes
+    -----
+    There are 25 images (frames) per .tif video.
+    There are 16 videos (trajectories).
+
+    Parameters
+    ----------
+    n_sampling_points : int
+        Number of points sampled along the contour of a cell.
+
+    Returns
+    -------
+    centers_traj : array-like, shape=[16, 25, 2]
+        2D coordinates of the barycenter of each cell's contours,
+        for each of the 16 videos, for each of the 25 frames per video.
+    shapes_traj : array-like, shape=[16, 25, n_sampling_points, 2]
+        2D coordinates of the sampling points defining the contour of each cell,
+        for each of the 16 videos, for each of the 25 frames per video.
+    imgs_traj : array-like, shape=[16, 25, 512, 512]
+        Images defining the videos, for each of the 16 videos.
+    labels : array-like, shape=[16,]
+        Phenotype associated with each trajectory (video).
+    """
+    datasets_dir = os.path.dirname(os.path.realpath(__file__))
+    list_tifs = glob.glob(
+        os.path.join(datasets_dir, "single_border_protusion_cells/*.tif")
+    )
+    n_traj = len(list_tifs)
+    one_img_stack = skio.imread(list_tifs[0], plugin="tifffile")
+    n_time_points, height, width = one_img_stack.shape
+
+    centers_traj = gs.zeros((n_traj, n_time_points, 2))
+    shapes_traj = gs.zeros((n_traj, n_time_points, n_sampling_points, 2))
+    imgs_traj = gs.zeros((n_traj, n_time_points, height, width))
+    labels = []
+    for i_traj, video_path in enumerate(list_tifs):
+        video_name = os.path.basename(video_path)
+        print(f"\n Processing trajectory {i_traj+1}/{n_traj}.")
+
+        print(f"Converting {video_name} into list of cell contours...")
+        contours_list, imgs_list = _tif_video_to_lists(video_path)
+
+        labels.append(int(video_name.split("_")[0]))
+        for i_contour, (contour, img) in enumerate(zip(contours_list, imgs_list)):
+            interpolated = _interpolate(contour, n_sampling_points)
+            cleaned = _remove_consecutive_duplicates(interpolated)
+            center = gs.mean(cleaned, axis=-2)
+            centered = cleaned - center[..., None, :]
+            centers_traj[i_traj, i_contour] = center
+            shapes_traj[i_traj, i_contour] = centered
+            if img.shape != (height, width):
+                print(
+                    "Found image of a different size: "
+                    f"{img.shape} instead of {height, width}. "
+                    "Skipped image (not cell contours)."
+                )
+                continue
+            imgs_traj[i_traj, i_contour] = gs.array(img.astype(float).T)
+    labels = gs.array(labels)
+    return centers_traj, shapes_traj, imgs_traj, labels
