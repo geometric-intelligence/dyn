@@ -1,5 +1,13 @@
 """Utils to load experimental datasets of cells."""
 
+import os
+import glob
+import pickle
+
+import skimage.io as skio
+from skimage.filters import threshold_otsu
+from skimage import measure
+
 import geomstats.backend as gs
 import geomstats.datasets.utils as data_utils
 import numpy as np
@@ -9,6 +17,26 @@ import dyn.dyn.features.basic as basic
 
 M_AMBIENT = 2
 
+
+def _tiff_to_list(tiff_path):
+    """Convert cell videos into trajectory of curves.
+    
+    Parameters
+    ----------
+    tiff_dir : absolute path of directory containing videos.
+    """
+    img_stack = skio.imread(tiff_path, plugin="tifffile")
+    cell_contours = []
+    for img in img_stack:
+        thresh = threshold_otsu(img)
+        binary = img > thresh
+        contours = measure.find_contours(binary, 0.8)
+        lengths = [len(c) for c in contours]
+        max_length = max(lengths)
+        index_max_length = lengths.index(max_length)
+        cell_contours.append(contours[index_max_length])
+
+    return cell_contours
 
 def _interpolate(curve, n_sampling_points):
     """Interpolate a discrete curve with nb_points from a discrete curve.
@@ -234,3 +262,31 @@ def load_mutated_retinal_cells(n_cells=-1, n_sampling_points=10):
         cells[i] = gs.cast(gs.array(curve), gs.float32)
 
     return preprocess(cells, surfaces, mutations, n_cells, n_sampling_points)
+
+
+def load_trajectory_of_border_cells(n_trajectories=-1, n_sampling_points=10, root_dir="/Users/ninamiolane/code/dyn/dyn/"):
+    """Load trajectories (or time-series) of border cells.
+    
+    Notes
+    -----
+    There are 25 images per .tiff video.
+    
+    """
+    list_tifs = glob.glob(os.path.join(root_dir, "datasets/single_border_protusion_cells/*.tif"))
+    n_trajectories = len(list_tifs)
+    center_trajectories = gs.zeros((n_trajectories, 25, 2))
+    shape_trajectories = gs.zeros((n_trajectories, 25, n_sampling_points, 2))
+    print(list_tifs)
+    for i_traj, video_path in enumerate(list_tifs):
+        print(f"Processing {i_traj}/{n_trajectories}.")
+        print(f"Converting {video_path} into list of cell contours...")
+        cell_contours = _tiff_to_list(video_path)
+
+        for i_frame, contour in enumerate(cell_contours):
+            interpolated = _interpolate(contour, n_sampling_points)
+            cleaned = _remove_consecutive_duplicates(interpolated)
+            center = gs.mean(cleaned, axis=-2)
+            centered = cleaned - center[..., None, :]
+            center_trajectories[i_traj, i_frame] = center
+            shape_trajectories[i_traj, i_frame] = centered
+    return center_trajectories, shape_trajectories
