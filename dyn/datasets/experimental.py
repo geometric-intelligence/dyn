@@ -23,7 +23,7 @@ def _tiff_to_list(tiff_path):
     
     Parameters
     ----------
-    tiff_dir : absolute path of directory containing videos.
+    tiff_dir : absolute path of videos in .tif format.
     """
     img_stack = skio.imread(tiff_path, plugin="tifffile")
     cell_contours = []
@@ -45,24 +45,25 @@ def _interpolate(curve, n_sampling_points):
 
     Parameters
     ----------
-    curve :
+    curve : array-like, shape=[n_points, 2]
     n_sampling_points : int
 
     Returns
     -------
-    interpolation : discrete curve with nb_points points
+    interpolation : array-like, shape=[n_sampling_points, 2]
+       Discrete curve with n_sampling_points
     """
     old_length = curve.shape[0]
-    interpolation = gs.zeros((n_sampling_points, 2))
+    interpolation = np.zeros((n_sampling_points, 2))
     incr = old_length / n_sampling_points
-    pos = gs.array(0.0, dtype=gs.float32)
+    pos = np.array(0.0, dtype=np.float32)
     for i in range(n_sampling_points):
-        index = int(gs.floor(pos))
+        index = int(np.floor(pos))
         interpolation[i] = curve[index] + (pos - index) * (
             curve[(index + 1) % old_length] - curve[index]
         )
         pos += incr
-    return interpolation
+    return gs.array(interpolation)
 
 
 def _remove_consecutive_duplicates(curve, tol=1e-2):
@@ -303,7 +304,7 @@ def load_trajectory_of_border_cells(n_sampling_points=10):
     labels = []
     for i_traj, video_path in enumerate(list_tifs):
         video_name = os.path.basename(video_path)
-        print(f"\n Processing {i_traj+1}/{n_trajectories} trajectories.")
+        print(f"\n Processing trajectory {i_traj+1}/{n_trajectories}.")
         
         print(f"Converting {video_name} into list of cell contours...")
         cell_contours, cell_imgs = _tiff_to_list(video_path)
