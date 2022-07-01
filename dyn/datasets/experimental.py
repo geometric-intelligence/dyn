@@ -1,17 +1,15 @@
 """Utils to load experimental datasets of cells."""
 
-import os
 import glob
-import pickle
-
-import skimage.io as skio
-from skimage.filters import threshold_otsu
-from skimage import measure
+import os
 
 import geomstats.backend as gs
 import geomstats.datasets.utils as data_utils
 import numpy as np
+import skimage.io as skio
 from geomstats.geometry.pre_shape import PreShapeSpace
+from skimage import measure
+from skimage.filters import threshold_otsu
 
 import dyn.dyn.features.basic as basic
 
@@ -20,7 +18,7 @@ M_AMBIENT = 2
 
 def _tiff_to_list(tiff_path):
     """Convert cell videos into trajectory of curves.
-    
+
     Parameters
     ----------
     tiff_dir : absolute path of videos in .tif format.
@@ -39,6 +37,7 @@ def _tiff_to_list(tiff_path):
         cell_contours.append(contours[index_max_length])
 
     return cell_contours, cell_imgs
+
 
 def _interpolate(curve, n_sampling_points):
     """Interpolate a discrete curve with nb_points from a discrete curve.
@@ -246,14 +245,10 @@ def load_mutated_retinal_cells(n_cells=-1, n_sampling_points=10):
         open("dyn/datasets/mutated_retinal_cells/cells.txt", "r").read().split("\n\n")
     )
     surfaces = (
-        open("dyn/datasets/mutated_retinal_cells/surfaces.txt", "r")
-        .read()
-        .split("\n")
+        open("dyn/datasets/mutated_retinal_cells/surfaces.txt", "r").read().split("\n")
     )
     mutations = (
-        open("dyn/datasets/mutated_retinal_cells/mutations.txt", "r")
-        .read()
-        .split("\n")
+        open("dyn/datasets/mutated_retinal_cells/mutations.txt", "r").read().split("\n")
     )
 
     for i, cell in enumerate(cells):
@@ -269,7 +264,7 @@ def load_mutated_retinal_cells(n_cells=-1, n_sampling_points=10):
 
 def load_trajectory_of_border_cells(n_sampling_points=10):
     """Load trajectories (or time-series) of border cells.
-    
+
     Notes
     -----
     There are 25 images (frames) per .tif video.
@@ -292,11 +287,12 @@ def load_trajectory_of_border_cells(n_sampling_points=10):
         Phenotype associated with each trajectory (video).
     """
     datasets_dir = os.path.dirname(os.path.realpath(__file__))
-    list_tifs = glob.glob(os.path.join(datasets_dir, "single_border_protusion_cells/*.tif"))
+    list_tifs = glob.glob(
+        os.path.join(datasets_dir, "single_border_protusion_cells/*.tif")
+    )
     n_trajectories = len(list_tifs)
     one_img_stack = skio.imread(list_tifs[0], plugin="tifffile")
     n_time_points, height, width = one_img_stack.shape
-    print(n_time_points, height, width)
 
     center_trajectories = gs.zeros((n_trajectories, n_time_points, 2))
     shape_trajectories = gs.zeros((n_trajectories, n_time_points, n_sampling_points, 2))
@@ -305,28 +301,25 @@ def load_trajectory_of_border_cells(n_sampling_points=10):
     for i_traj, video_path in enumerate(list_tifs):
         video_name = os.path.basename(video_path)
         print(f"\n Processing trajectory {i_traj+1}/{n_trajectories}.")
-        
+
         print(f"Converting {video_name} into list of cell contours...")
         cell_contours, cell_imgs = _tiff_to_list(video_path)
-        
+
         labels.append(int(video_name.split("_")[0]))
         for i_contour, (contour, img) in enumerate(zip(cell_contours, cell_imgs)):
-            #print(type(contour))
-            #print(contour)
             interpolated = _interpolate(contour, n_sampling_points)
             cleaned = _remove_consecutive_duplicates(interpolated)
             center = gs.mean(cleaned, axis=-2)
             centered = cleaned - center[..., None, :]
             center_trajectories[i_traj, i_contour] = center
             shape_trajectories[i_traj, i_contour] = centered
-            #print(img.shape)
             if img.shape != (height, width):
                 print(
-                    f"Found image of a different size: {img.shape} instead of {height, width}. Skipped image (not cell contours).")
+                    "Found image of a different size: "
+                    f"{img.shape} instead of {height, width}. "
+                    "Skipped image (not cell contours)."
+                )
                 continue
             img_trajectories[i_traj, i_contour] = gs.array(img.astype(float).T)
-#     center_trajectories = gs.stack(center_trajectories, axis=0)
-#     shape_trajectories = gs.stack(shape_trajectories, axis=0)
-    #img_trajectories = gs.stack(img_trajectories, axis=0)
     labels = gs.array(labels)
     return center_trajectories, shape_trajectories, img_trajectories, labels
