@@ -70,7 +70,7 @@ def _interpolate(curve, n_sampling_points):
             curve[(index + 1) % old_length] - curve[index]
         )
         pos += incr
-    return gs.array(interpolation)
+    return gs.array(interpolation, dtype=gs.float32)
 
 
 def _remove_consecutive_duplicates(curve, tol=1e-2):
