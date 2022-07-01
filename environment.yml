@@ -12,5 +12,6 @@ dependencies:
     - mat73
     - numba
     - numpy>=1.23.0
+    - scikit-image
     - torch>=1.11
     - -r dev-requirements.txt
