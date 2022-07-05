@@ -6,6 +6,9 @@ from geomstats.geometry.discrete_curves import R2, DiscreteCurves
 
 CURVES_SPACE = DiscreteCurves(R2)
 METRIC = CURVES_SPACE.srv_metric
+#uncomment code below if you want to create geodesics with synthetic data using elastic metric
+#CURVES_SPACE = DiscreteCurves(R2, a=1,b=10000)
+#METRIC = CURVES_SPACE.elastic_metric
 
 
 def rectangle(n_points_height, n_points_length, height, length, protusion=0):
