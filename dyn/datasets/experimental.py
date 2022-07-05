@@ -305,6 +305,13 @@ def load_trajectory_of_border_cells(n_sampling_points=10):
     - datasets/border_cell_cluster.png
     - datasets/border_cell_cluster.avi
 
+    References
+    ----------
+    Campanale, Mondo, Montell (2022).
+    Specialized protrusions coordinate migratory border cell cluster cohesion
+    via Scribble, Cdep, and Rac.
+    https://www.biorxiv.org/content/10.1101/2022.01.04.474957v1.full
+
     Parameters
     ----------
     n_sampling_points : int
