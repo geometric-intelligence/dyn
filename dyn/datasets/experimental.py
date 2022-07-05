@@ -271,12 +271,46 @@ def load_mutated_retinal_cells(n_cells=-1, n_sampling_points=10):
 
 
 def load_trajectory_of_border_cells(n_sampling_points=10):
-    """Load trajectories (or time-series) of border cells.
+    """Load trajectories (or time-series) of border cell clusters.
+
+    The marker used for imaging is a GFP tagged marker of F-actin markers.
 
     Notes
     -----
     There are 25 images (frames) per .tif video.
     There are 16 videos (trajectories).
+
+    In each movie, there is a group of cells called the "border cell cluster", i.e.
+    a tightly packed group of 5-7 cells that coordinate their movement as they move.
+    They look (and in many ways behave) as a single cell. They move within
+    a large structure, the egg chamber: we say that they "migrate".
+
+    At some point in their migration, the cluster shows has a "lead protrusion"
+    and sometimes the cluster is compact and lack this protrusion.
+
+    The movies from this dataset, i.e. labeled 33623, 59080, and 104438 are actually of
+    single cells (one cell within the cluster) or sometimes two cells in the cluster
+    labeled with the rest of the cells in the cluster being dark.
+
+    The movies labeled "33623" represents the control case, and shows a single cell as
+    the rest of the cells in the cluster are dark.
+
+    The movies labeled "59080" and "104438" correspond to knockdowns of proteins,
+    where we anticipate the following shape changes:
+    - cells less cohesive,
+    - producing very small thin protrusions.
+
+    See Also
+    --------
+    - datasets/border_cell_cluster.png
+    - datasets/border_cell_cluster.avi
+
+    References
+    ----------
+    Campanale, Mondo, Montell (2022).
+    Specialized protrusions coordinate migratory border cell cluster cohesion
+    via Scribble, Cdep, and Rac.
+    https://www.biorxiv.org/content/10.1101/2022.01.04.474957v1.full
 
     Parameters
     ----------
