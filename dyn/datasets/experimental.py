@@ -270,6 +270,34 @@ def load_mutated_retinal_cells(n_cells=-1, n_sampling_points=10):
     return preprocess(cells, surfaces, mutations, n_cells, n_sampling_points)
 
 
+def load_septin_cells(n_cells=-1, n_sampling_points=10):
+    """Load dataset of septin cells.
+    
+    There are three groups that we are considering: control, Septin Knockdown, Septin Overexpression.
+    
+    Notes
+    -----
+    There are 36 tif files in Control -> binary files
+    There are 45 tif files in Septin Knockdown -> binary files
+    There are 36 tif files in Septin Overexpression -> binary files
+    
+    """
+    septin_dir = os.path.dirname(os.path.realpath(__file__))
+    control_tifs = glob.glob(
+        os.path.join(septin_dir, "septin_groups/Control/binary_images/*.tif")
+    )
+    septin_knockdown_tifs = glob.glob(
+        os.path.join(septin_dir, "septin_groups/septin_knockdown/binary_images/*.tif")
+    )
+    septin_overexpression_tifs = glob.glob(
+        os.path.join(septin_dir, "septin_groups/septin_overexpression/binary_images/*.tif")
+    )
+    #print(list_tifs.shape)
+    
+    
+    return control_tifs, septin_knockdown_tifs, septin_overexpression_tifs
+    
+    
 def load_trajectory_of_border_cells(n_sampling_points=10):
     """Load trajectories (or time-series) of border cell clusters.
 
@@ -334,6 +362,7 @@ def load_trajectory_of_border_cells(n_sampling_points=10):
     list_tifs = glob.glob(
         os.path.join(datasets_dir, "single_border_protusion_cells/*.tif")
     )
+    
     n_traj = len(list_tifs)
     one_img_stack = skio.imread(list_tifs[0], plugin="tifffile")
     n_time_points, height, width = one_img_stack.shape
