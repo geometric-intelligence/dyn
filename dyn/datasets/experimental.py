@@ -282,17 +282,21 @@ def load_septin_cells(n_cells=-1, n_sampling_points=10):
     There are 36 tif files in Septin Overexpression -> binary files
     
     """
-    septin_dir = os.path.dirname(os.path.realpath(__file__))
+    
+    dataset_dir = os.path.dirname(os.path.realpath(__file__))
+    
+    #os.path.join finds the path that leads you to the file
+    #glob.glob finds and returns the file you are looking for and returns the data.
     control_tifs = glob.glob(
-        os.path.join(septin_dir, "septin_groups/Control/binary_images/*.tif")
+        os.path.join(dataset_dir, "septin_groups/Control/binary_images/*.tif")
     )
     septin_knockdown_tifs = glob.glob(
-        os.path.join(septin_dir, "septin_groups/septin_knockdown/binary_images/*.tif")
+        os.path.join(dataset_dir, "septin_groups/septin_knockdown/binary_images/*.tif")
     )
     septin_overexpression_tifs = glob.glob(
-        os.path.join(septin_dir, "septin_groups/septin_overexpression/binary_images/*.tif")
+        os.path.join(dataset_dir, "septin_groups/septin_overexpression/binary_images/*.tif")
     )
-    #print(list_tifs.shape)
+    
     
     
     return control_tifs, septin_knockdown_tifs, septin_overexpression_tifs
