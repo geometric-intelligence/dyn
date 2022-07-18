@@ -270,14 +270,14 @@ def load_mutated_retinal_cells(n_cells=-1, n_sampling_points=10):
     return preprocess(cells, surfaces, mutations, n_cells, n_sampling_points)
 
 
-def load_septin_cells(group,n_cells=-1, n_sampling_points=10):
+def load_septin_cells(group, n_sampling_points):
     """Load dataset of septin control cells.
     
-    There are three groups that we are considering: *control, Septin Knockdown, Septin Overexpression.
+    There are three groups that we are considering: control, Septin Knockdown, Septin Overexpression.
     
     Notes
     -----
-    *There are 36 tif files in Control -> binary files
+    There are 36 tif files in Control -> binary files
     There are 45 tif files in Septin Knockdown -> binary files
     There are 36 tif files in Septin Overexpression -> binary files
     """
@@ -285,40 +285,22 @@ def load_septin_cells(group,n_cells=-1, n_sampling_points=10):
     
     #os.path.join finds the path that leads you to the file
     #glob.glob finds and returns the file you are looking for and returns the data.
-    control_path = os.path.join(dataset_dir, "septin_groups/"+group+"/binary_images/*.tif")
-    control_tifs = glob.glob(control_path)
+    group_path = os.path.join(dataset_dir, "septin_groups/"+group+"/binary_images/*.tif")
+    group_tifs = glob.glob(group_path)
     print('Loading '+group+' data')
-    
-    n_sampling_points=10
-    n_cells=-1
+    print('n_sampling_points= '+str(n_sampling_points))
 
-    #n_traj = len(list_tifs)
-    #print(n_traj)
-    #before, this was called one_img_stack because it was used to come up with n_time_points and other variables
-    #because before, there were multiple image stacks. here, list_tifs is one image stack, so we will change
-    #one_img_stack -> img_stack
-    img_stack = skio.imread(control_tifs, plugin="tifffile")
+    img_stack = skio.imread(group_tifs, plugin="tifffile")
     n_time_points, height, width = img_stack.shape
-
-    #centers_traj = gs.zeros((n_traj, n_time_points, 2))
-    #shapes_traj = gs.zeros((n_traj, n_time_points, n_sampling_points, 2))
-    #imgs_traj = gs.zeros((n_traj, n_time_points, height, width))
 
     centers_traj = gs.zeros((n_time_points, 2))
     shapes_traj = gs.zeros((n_time_points, n_sampling_points, 2))
     imgs_traj = gs.zeros((n_time_points, height, width))
 
 
-    #labels = []
-    #for i_traj, video_path in enumerate(list_tifs):
-        #video_name = os.path.basename(video_path)
-        #print(f"\n Processing trajectory {i_traj+1}/{n_traj}.")
-
-        #print(f"Converting {video_name} into list of cell contours...")
-
     #this converts all the images into a list of contours and images.
     
-    contours_list, imgs_list = _tif_video_to_lists(control_tifs)
+    contours_list, imgs_list = _tif_video_to_lists(group_tifs)
 
     #labels.append(int(video_name.split("_")[0]))
     for i_contour, (contour, img) in enumerate(zip(contours_list, imgs_list)):
@@ -336,50 +318,11 @@ def load_septin_cells(group,n_cells=-1, n_sampling_points=10):
             )
             continue
         imgs_traj[i_contour] = gs.array(img.astype(float).T)
-    labels = gs.array(labels)
+    #labels = gs.array(labels)
     
     return centers_traj, shapes_traj, imgs_traj, group
     
-"""
 
-def load_septin_cells(n_cells=-1, n_sampling_points=10):
-    
-
-    Load dataset of septin cells.
-    
-    There are three groups that we are considering: control, Septin Knockdown, Septin Overexpression.
-    
-    Notes
-    -----
-    There are 36 tif files in Control -> binary files
-    There are 45 tif files in Septin Knockdown -> binary files
-    There are 36 tif files in Septin Overexpression -> binary files
-    
-    
-    
-    dataset_dir = os.path.dirname(os.path.realpath(__file__))
-    
-    #os.path.join finds the path that leads you to the file
-    #glob.glob finds and returns the file you are looking for and returns the data.
-    control_path = os.path.join(dataset_dir, "septin_groups/Control/binary_images/*.tif")
-    control_tifs = glob.glob(control_path
-        #os.path.join(dataset_dir, "septin_groups/Control/binary_images/*.tif")
-    )
-    
-    knockown_path = os.path.join(dataset_dir, "septin_groups/septin_knockdown/binary_images/*.tif")
-    septin_knockdown_tifs = glob.glob(
-        knockdown_path
-    )
-    
-    
-    overexp_path = os.path.join(dataset_dir, "septin_groups/septin_overexpression/binary_images/*.tif")
-    septin_overexpression_tifs = glob.glob( overexp_path
-    )
-    
-    
-    
-    return control_path, knockdown_path, overexp_path, control_tifs, septin_knockdown_tifs, septin_overexpression_tifs
-"""
     
 def load_trajectory_of_border_cells(n_sampling_points=10):
     """Load trajectories (or time-series) of border cell clusters.
