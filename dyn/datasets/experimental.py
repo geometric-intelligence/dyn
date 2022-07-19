@@ -271,7 +271,7 @@ def load_mutated_retinal_cells(n_cells=-1, n_sampling_points=10):
 
 
 def load_septin_cells(group, n_sampling_points):
-    """Load dataset of septin control cells.
+    """ Load dataset of septin control cells.
     
     There are three groups that we are considering: control, Septin Knockdown, Septin Overexpression.
     
@@ -283,33 +283,32 @@ def load_septin_cells(group, n_sampling_points):
     """
     dataset_dir = os.path.dirname(os.path.realpath(__file__))
     
-    #os.path.join finds the path that leads you to the file
-    #glob.glob finds and returns the file you are looking for and returns the data.
+    # os.path.join finds the path that leads you to the file
+    # glob.glob finds and returns the file you are looking for and returns the data.
     group_path = os.path.join(dataset_dir, "septin_groups/"+group+"/binary_images/*.tif")
     group_tifs = glob.glob(group_path)
     print('Loading '+group+' data')
     print('n_sampling_points= '+str(n_sampling_points))
 
     img_stack = skio.imread(group_tifs, plugin="tifffile")
-    n_time_points, height, width = img_stack.shape
+    n_images, height, width = img_stack.shape
 
-    centers_traj = gs.zeros((n_time_points, 2))
-    shapes_traj = gs.zeros((n_time_points, n_sampling_points, 2))
-    imgs_traj = gs.zeros((n_time_points, height, width))
+    cell_centers = gs.zeros((n_images, 2))
+    cell_shapes = gs.zeros((n_images, n_sampling_points, 2))
+    cell_imgs = gs.zeros((n_images, height, width))
 
 
-    #this converts all the images into a list of contours and images.
-    
+    # This converts all the images into a list of contours and images.
     contours_list, imgs_list = _tif_video_to_lists(group_tifs)
+    group_labels=[]
 
-    #labels.append(int(video_name.split("_")[0]))
     for i_contour, (contour, img) in enumerate(zip(contours_list, imgs_list)):
         interpolated = _interpolate(contour, n_sampling_points)
         cleaned = _remove_consecutive_duplicates(interpolated)
         center = gs.mean(cleaned, axis=-2)
         centered = cleaned - center[..., None, :]
-        centers_traj[i_contour] = center
-        shapes_traj[i_contour] = centered
+        cell_centers[i_contour] = center
+        cell_shapes[i_contour] = centered
         if img.shape != (height, width):
             print(
                 "Found image of a different size: "
@@ -317,10 +316,18 @@ def load_septin_cells(group, n_sampling_points):
                 "Skipped image (not cell contours)."
             )
             continue
-        imgs_traj[i_contour] = gs.array(img.astype(float).T)
-    #labels = gs.array(labels)
-    
-    return centers_traj, shapes_traj, imgs_traj, group
+        cell_imgs[i_contour] = gs.array(img.astype(float).T)
+        group_labels.append(group)
+        
+    print("- Cell shapes: quotienting scaling (length).")
+    for i_cell, cell in enumerate(cell_shapes):
+        cell_shapes[i_cell] = cell / basic.perimeter(cell_shapes[i_cell])
+
+    print("- Cell shapes: quotienting rotation.")
+    for i_cell, cell_shape in enumerate(cell_shapes):
+        cell_shapes[i_cell] = _exhaustive_align(cell_shape, cell_shapes[0])
+        
+    return cell_centers, cell_shapes, cell_imgs, group_labels
     
 
     
