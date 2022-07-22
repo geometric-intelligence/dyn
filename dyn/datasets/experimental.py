@@ -270,6 +270,67 @@ def load_mutated_retinal_cells(n_cells=-1, n_sampling_points=10):
     return preprocess(cells, surfaces, mutations, n_cells, n_sampling_points)
 
 
+def load_septin_cells(group, n_sampling_points):
+    """ Load dataset of septin control cells.
+    
+    There are three groups that we are considering: control, Septin Knockdown, Septin Overexpression.
+    
+    Notes
+    -----
+    There are 36 tif files in Control -> binary files
+    There are 45 tif files in Septin Knockdown -> binary files
+    There are 36 tif files in Septin Overexpression -> binary files
+    """
+    dataset_dir = os.path.dirname(os.path.realpath(__file__))
+    
+    # os.path.join finds the path that leads you to the file
+    # glob.glob finds and returns the file you are looking for and returns the data.
+    group_path = os.path.join(dataset_dir, "septin_groups/"+group+"/binary_images/*.tif")
+    group_tifs = glob.glob(group_path)
+    print('Loading '+group+' data')
+    print('n_sampling_points= '+str(n_sampling_points))
+
+    img_stack = skio.imread(group_tifs, plugin="tifffile")
+    n_images, height, width = img_stack.shape
+
+    cell_centers = gs.zeros((n_images, 2))
+    cell_shapes = gs.zeros((n_images, n_sampling_points, 2))
+    cell_imgs = gs.zeros((n_images, height, width))
+
+
+    # This converts all the images into a list of contours and images.
+    contours_list, imgs_list = _tif_video_to_lists(group_tifs)
+    group_labels=[]
+
+    for i_contour, (contour, img) in enumerate(zip(contours_list, imgs_list)):
+        interpolated = _interpolate(contour, n_sampling_points)
+        cleaned = _remove_consecutive_duplicates(interpolated)
+        center = gs.mean(cleaned, axis=-2)
+        centered = cleaned - center[..., None, :]
+        cell_centers[i_contour] = center
+        cell_shapes[i_contour] = centered
+        if img.shape != (height, width):
+            print(
+                "Found image of a different size: "
+                f"{img.shape} instead of {height, width}. "
+                "Skipped image (not cell contours)."
+            )
+            continue
+        cell_imgs[i_contour] = gs.array(img.astype(float).T)
+        group_labels.append(group)
+        
+    print("- Cell shapes: quotienting scaling (length).")
+    for i_cell, cell in enumerate(cell_shapes):
+        cell_shapes[i_cell] = cell / basic.perimeter(cell_shapes[i_cell])
+
+    print("- Cell shapes: quotienting rotation.")
+    for i_cell, cell_shape in enumerate(cell_shapes):
+        cell_shapes[i_cell] = _exhaustive_align(cell_shape, cell_shapes[0])
+        
+    return cell_centers, cell_shapes, cell_imgs, group_labels
+    
+
+    
 def load_trajectory_of_border_cells(n_sampling_points=10):
     """Load trajectories (or time-series) of border cell clusters.
 
@@ -334,6 +395,7 @@ def load_trajectory_of_border_cells(n_sampling_points=10):
     list_tifs = glob.glob(
         os.path.join(datasets_dir, "single_border_protusion_cells/*.tif")
     )
+    
     n_traj = len(list_tifs)
     one_img_stack = skio.imread(list_tifs[0], plugin="tifffile")
     n_time_points, height, width = one_img_stack.shape
