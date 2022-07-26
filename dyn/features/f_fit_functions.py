@@ -21,219 +21,6 @@ from geomstats.geometry.discrete_curves import DiscreteCurves, R2
 
 import dyn.dyn.features.basic as basic
 from geomstats.geometry.pre_shape import PreShapeSpace
-
-
-def plot_full_compare_ft(geodesic,a,b):
-    """
-    Uses the f transform described in http://arxiv.org/abs/1803.10894 to:
-    -transform data into "q-space" which is flat. 
-    -perform linear regression in this "q-space". 
-    -calculate the "predicted data" that the line in "q-space" predicts
-    -here, the "predicted data" is "where the regression line would predict the original 
-        input data to be"
-    -transform predicted data back to curve space
-    -plot 1) the original data 2) the predicted data 3) the predicted data and the original 
-        data, overlaid.
-    """
-
-    n_geodesics = 1
-    n_times = len(geodesic)
-    #print(n_times)
-    n_points = len(geodesic[0])
-
-    
-    # this is creating (aka "instantiating") an object elastic_metric of the class ElasticMetric
-    elastic_metric = ElasticMetric(a, b, ambient_manifold=R2)  
-
-
-    #q_tensor = elastic_metric.f_transform(geods_square_rect[0])
-    q_tensor = elastic_metric.f_transform(geodesic)
-
-    q=np.array(q_tensor)
-
-    #reshape q into a compressed vector
-    q_vector = q.reshape((n_times, -1))
-
-    #create regression object
-    regr = linear_model.LinearRegression()
-
-    #Now, i need to create an array that only has the times
-    q_times_1d = gs.arange(0, n_times, 1)
-    q_times = np.reshape(q_times_1d,(n_times,1))
-
-    regr.fit(q_times,q_vector)
-
-    #compute estimated q predictions
-    q_vector_predict=regr.predict(q_times)
-
-    #first, we will have to de-compress the vector (turn it back into its original shape)
-    q_array_predict = np.reshape(q_vector_predict,(n_times,n_points-1,2))
-
-    #now, we will transform the array back into a tensor so that f_transoform_inverse will accept it
-    q_tensor_predict= torch.from_numpy(q_array_predict)
-
-    starting_point_array = gs.zeros((n_times, 2))
-
-    predicted_curves=elastic_metric.f_transform_inverse(q_tensor_predict,starting_point_array)
-
-    #first, i will create a new array, where one of the geodesics is the original geodesic and the other geodesic
-    #is the predicted geodesic.
-    
-    
-    #For plotting reasons, we create a new array from the original geodesic, 
-    #where the starting point is zero for each shape.
-    #recentered_geodesic = gs.zeros([n_times,n_points,2])
-    
-    #for i_time in range(n_times):
-    #    distance_x = geodesic[i_time,0,0]
-    #    distance_y = geodesic[i_time,0,1]
-    #    for i_point in range(n_points):
-    #        recentered_geodesic[i_time,i_point,0]=geodesic[i_time,i_point,0]-distance_x
-    #        recentered_geodesic[i_time,i_point,1]=geodesic[i_time,i_point,1]-distance_y
-    
-    recentered_geodesic = centered_predictions(predicted_curves, n_points,n_times)
-    
-    
-
-    ##geodesic_array= np.array([geods_square_rect[0],predicted_curves])
-    geodesic_array= np.array([recentered_geodesic,predicted_curves])
-    
-
-    n_geodesics_plot=2
-    #n_geodesics_plot=3
-    fig, axes = plt.subplots(
-        n_geodesics_plot+1, n_times, figsize=(20, 10), sharex=True, sharey=True
-    )
-    fig.suptitle("Elastic Metric: a= "+str(a)+", b= " +str(b)+": Comparison between synthetic and 'q-predicted' geodesics", fontsize=20)
-
-    for i_geodesic in range(n_geodesics_plot):
-        curve = geodesic_array[i_geodesic]
-        for i_time in range(n_times):
-            axes[i_geodesic, i_time].plot(
-                curve[i_time][:, 0], curve[i_time][:, 1], marker="o", c=f"C{i_geodesic}"
-            )
-            axes[i_geodesic, i_time].set_aspect("equal")
-            
-    #now, creating the third set of plots, where they are overlaid
-    for i_geodesic in range(n_geodesics_plot):
-        curve = geodesic_array[i_geodesic]
-        for i_time in range(n_times):
-            axes[2, i_time].plot(
-                curve[i_time][:, 0], curve[i_time][:, 1], marker="o", c=f"C{i_geodesic}"
-            )
-            axes[i_geodesic, i_time].set_aspect("equal")
-    
-    plt.tight_layout()
-    
-def plot_full_compare_ft_split_set(geodesic,a,b):
-    """
-    Does the same thing as "plot_full_compare_ft" except:
-    -it uses the first set of the dataset to generate regression prediction
-    -then, it uses the regression line to "predict" the second set of the time series
-    -then, plots: 1) the predicted second half of the time series 2) the actual second set of the time series
-    3) the predicted and actual second set of the time series, overlaid.
-    """
-
-    n_geodesics = 1
-    n_times = len(geodesic)
-    n_points = len(geodesic[0])
-
-    #creating our synthetic dataset
-    #geods_circle_ell = synthetic.geodesics_circle_to_ellipse(
-    #    n_geodesics=n_geodesics, n_times=n_times, n_points=n_points
-    #)
-
-    # this is creating (aka "instantiating") an object elastic_metric of the class ElasticMetric
-    elastic_metric = ElasticMetric(a, b, ambient_manifold=R2)  
-
-    #selecting the first (and only) geodesic
-    #geodesic = geods_square_rect[0]
-
-    ##q_tensor = elastic_metric.f_transform(geods_circle_ell[0])
-    q_tensor = elastic_metric.f_transform(geodesic)
-
-    q=np.array(q_tensor)
-
-    #reshape q into a compressed vector
-    q_vector = q.reshape((n_times, -1))
-
-    #create regression object
-    regr = linear_model.LinearRegression()
-
-    #Now, i need to create an array that only has the times
-    q_times_1d = gs.arange(0, n_times, 1)
-
-    half_n_times = int(n_times/2)
-
-    #NEW HERE: splitting the dataset
-    q_times_1d_train = q_times_1d[:half_n_times]
-    q_times_1d_test = q_times_1d[half_n_times:]
-
-    #splitting the vector dataset
-    q_vector_train= q_vector[:half_n_times]
-    q_vector_test = q_vector[half_n_times:]
-
-    q_times_train = np.reshape(q_times_1d_train,(half_n_times,1))
-    q_times_test = np.reshape(q_times_1d_test,(n_times-half_n_times,1))
-
-    regr.fit(q_times_train,q_vector_train)
-
-    #compute estimated q predictions
-    q_vector_predict=regr.predict(q_times_test)
-
-    q_array_predict = np.reshape(q_vector_predict,(n_times-half_n_times,n_points-1,2))
-
-    #now, we will transform the array back into a tensor so that f_transoform_inverse will accept it
-
-    q_tensor_predict= torch.from_numpy(q_array_predict)
-
-    #do the transform
-    starting_point_array = gs.zeros((n_times-half_n_times, 2))
-
-    predicted_curves=elastic_metric.f_transform_inverse(q_tensor_predict,starting_point_array)
-
-    #first, i will create a new array, where one of the geodesics is the original geodesic and the other geodesic
-    #is the predicted geodesic. The third figure will show the two curves overlaid on each other.
-    
-    #This creates a new array from the original geodesic, where the starting point is zero for each shape.
-    recentered_geodesic = gs.zeros([n_times,n_points,2])
-    
-    for i_time in range(n_times):
-        distance_x = geodesic[i_time,0,0]
-        distance_y = geodesic[i_time,0,1]
-        for i_point in range(n_points):
-            recentered_geodesic[i_time,i_point,0]=geodesic[i_time,i_point,0]-distance_x
-            recentered_geodesic[i_time,i_point,1]=geodesic[i_time,i_point,1]-distance_y
-    
-    ##geodesic_array= np.array([geods_circle_ell[0,half_n_times:],predicted_curves])
-    geodesic_array= np.array([recentered_geodesic[half_n_times:],predicted_curves])
-
-    n_geodesics_plot=2
-    fig, axes = plt.subplots(
-        n_geodesics_plot+1, n_times-half_n_times, figsize=(20,10), sharex=True, sharey=True
-    )
-    fig.suptitle("Elastic Metric: a= "+str(a)+", b= " +str(b)+": Comparison between synthetic and 'q-predicted' geodesics", fontsize=20)
-    
-    for i_geodesic in range(n_geodesics_plot):
-        curve = geodesic_array[i_geodesic]
-        for i_time in range(n_times-half_n_times):
-            axes[i_geodesic, i_time].plot(
-                curve[i_time][:, 0], curve[i_time][:, 1], marker="o", c=f"C{i_geodesic}"
-            )
-            axes[i_geodesic, i_time].set_aspect("equal")
-            
-        
-            
-    #now, creating the third set of plots, where they are overlaid
-    for i_geodesic in range(n_geodesics_plot):
-        curve = geodesic_array[i_geodesic]
-        for i_time in range(n_times-half_n_times):
-            axes[2, i_time].plot(
-                curve[i_time][:, 0], curve[i_time][:, 1], marker="o", c=f"C{i_geodesic}"
-            )
-            axes[i_geodesic, i_time].set_aspect("equal")
-            
-    plt.tight_layout()
     
     
     
@@ -601,3 +388,47 @@ def _exhaustive_align(curve, base_curve):
     
     
 """
+
+
+
+def optimize_ab(geodesic):
+    """
+    could probably make this function more "sophisticated" by implementing something that would 
+    1) see which values give the best result
+    2) implement some algorithm to narrow down a more precise "best value"
+    """
+    
+    n_geodesics = 1
+    n_times = len(geodesic)
+    n_points = len(geodesic[0])
+    
+    regr = linear_model.LinearRegression()
+
+    ELASTIC_METRIC = {}
+    AS = [1, 2, 0.75, 0.5, 0.25, 0.01, 1.6, 1.4, 1.2, 1, 0.5, 0.2, 0.1]
+    BS = [0.5, 1, 0.5, 0.5, 0.5, 0.5, 2, 2, 2, 2, 2, 2, 2]
+    
+    max_r2 = 0
+    best_a =0
+    best_b =0
+    
+    for a, b in zip(AS, BS):
+        ELASTIC_METRIC[a, b] = DiscreteCurves(R2, a=a, b=b).elastic_metric
+        q_tensor = ELASTIC_METRIC[a, b].f_transform(geodesic)
+        q=np.array(q_tensor)
+        q_vector = q.reshape((n_times, -1))
+        
+        q_times_1d = gs.arange(0, n_times, 1)
+        q_times = np.reshape(q_times_1d,(n_times,1))
+        
+        regr.fit(q_times,q_vector)
+        r2= regr.score(q_times,q_vector)
+        
+        if r2 > max_r2:
+            max_r2=r2
+            best_a=a
+            best_b=b
+            
+    return best_a, best_b, max_r2
+    
+    
