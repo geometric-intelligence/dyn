@@ -8,7 +8,6 @@ import os
 os.environ["GEOMSTATS_BACKEND"] = "pytorch"
 import geomstats.backend as gs
 
-
 from geomstats.geometry.discrete_curves import ElasticMetric
 import numpy as np
 
@@ -27,6 +26,8 @@ from geomstats.geometry.pre_shape import PreShapeSpace
     
 def ftrans_plot_predictions(geodesic,a=1,b=1,split=True):
     """
+    Intended for geodesics
+ 
     If split is false:
     Uses the f transform described in http://arxiv.org/abs/1803.10894 to:
     -transform data into "q-space" which is flat. 
@@ -79,10 +80,10 @@ def ftrans_plot_predictions(geodesic,a=1,b=1,split=True):
     q_times_1d = gs.arange(0, n_times, 1)
     
     if split:
-        q_tensor_predict, starting_point_array = half_set_regression(q_vector, n_times,q_times_1d,n_points)
+        q_tensor_predict, starting_point_array = half_set_linear_regression(q_vector, n_times,q_times_1d,n_points)
         
     else:
-        q_tensor_predict, starting_point_array= full_set_regression(q_vector, n_times,q_times_1d, n_points)
+        q_tensor_predict, starting_point_array= full_set_linear_regression(q_vector, n_times,q_times_1d, n_points)
         
         
 
@@ -101,7 +102,7 @@ def ftrans_plot_predictions(geodesic,a=1,b=1,split=True):
     
     
     
-def full_set_regression(q_vector, n_times,q_times_1d,n_points):
+def full_set_linear_regression(q_vector, n_times,q_times_1d,n_points):
     """
     Performs a linear regression in "q-space", where the training dataset is the whole time series.
     
@@ -135,7 +136,7 @@ def full_set_regression(q_vector, n_times,q_times_1d,n_points):
     
     return q_tensor_predict, starting_point_array
     
-def half_set_regression(q_vector, n_times,q_times_1d,n_points):
+def half_set_linear_regression(q_vector, n_times,q_times_1d,n_points):
     """
     Performs a linear regression in "q-space", where the first half of the dataset is used to "train" the regression line
         and the second half of the dataset is used to "test" the regression line.
@@ -181,6 +182,12 @@ def half_set_regression(q_vector, n_times,q_times_1d,n_points):
     
     return q_tensor_predict, starting_point_array
 
+
+
+
+
+
+
 def half_set_plot_comparison(recentered_curves, geodesic, n_times,a,b):
     """
     Considers the case where the first half of the dataset is used as a "training" dataset and the second half of
@@ -206,7 +213,7 @@ def half_set_plot_comparison(recentered_curves, geodesic, n_times,a,b):
 
     n_geodesics_plot=2
     fig, axes = plt.subplots(
-        n_geodesics_plot+1, n_times-half_n_times, figsize=(20,10), sharex=True, sharey=True
+        n_geodesics_plot+1, n_times-half_n_times, figsize=(20,10), #sharex=True, sharey=True
     )
     fig.suptitle("Elastic Metric: a= "+str(a)+", b= " +str(b)+": Comparison between synthetic and 'q-predicted' geodesics", fontsize=20)
     
@@ -230,6 +237,8 @@ def half_set_plot_comparison(recentered_curves, geodesic, n_times,a,b):
             axes[i_geodesic, i_time].set_aspect("equal")
             
     plt.tight_layout()
+    
+    
 
 def full_set_plot_comparison(recentered_curves,geodesic, n_times,a,b):
     """
@@ -391,11 +400,13 @@ def _exhaustive_align(curve, base_curve):
 
 
 
-def optimize_ab(geodesic):
+def optimize_ab_linear(geodesic):
     """
     could probably make this function more "sophisticated" by implementing something that would 
     1) see which values give the best result
     2) implement some algorithm to narrow down a more precise "best value"
+    
+    Note: this uses the whole dataset to do the optimization and does not split the dataset
     """
     
     n_geodesics = 1
@@ -432,3 +443,77 @@ def optimize_ab(geodesic):
     return best_a, best_b, max_r2
     
     
+    
+def ftrans_plot_predictions_nongeodesic(geodesic,a,b, split = True):
+    """
+    THIS FUNCTION IS NOT COMPLETE
+    
+    This will look a lot like ftrans_plot_predictions except it will do polynomial regression
+    instead of linear regression.
+    I think we should also include a function here that decides which polynomial function to do (by optimizing r^2).
+    Then, we can use this, (in conjunction with a future optimize_ab_polynomial) to fully fit functions
+    In the future, we can also combine all of these functions so that we can have one big function that has a bunch of 
+    options like type = "linear", "polynomial" etc.
+    """
+    n_geodesics = 1
+    n_times = len(geodesic)
+    n_points = len(geodesic[0])
+
+    # this is creating (aka "instantiating") an object elastic_metric of the class ElasticMetric
+    elastic_metric = ElasticMetric(a, b, ambient_manifold=R2)  
+
+    ##q_tensor = elastic_metric.f_transform(geods_circle_ell[0])
+    q_tensor = elastic_metric.f_transform(geodesic)
+
+    q=np.array(q_tensor)
+
+    #reshape q into a compressed vector.
+    q_vector = q.reshape((n_times, -1))
+
+
+    #Now, i need to create an array that only has the times
+    q_times_1d = gs.arange(0, n_times, 1)
+    
+    if split:
+        q_tensor_predict, starting_point_array = polynomial_regression(q_vector, n_times,q_times_1d,n_points)
+        
+    else:
+        q_tensor_predict, starting_point_array= polynomial_regression(q, n_times,q_times_1d, n_points)
+        
+        
+
+    predicted_curves=elastic_metric.f_transform_inverse(q_tensor_predict,starting_point_array)
+
+    
+    #first, i will create a new array, where one of the geodesics is the original geodesic and the other geodesic
+    #is the predicted geodesic. The third figure will show the two curves overlaid on each other.
+    
+    recentered_curves= centered_predictions(predicted_curves,n_points,n_times)
+    
+    if split:
+        half_set_plot_comparison(recentered_curves,geodesic, n_times,a,b)
+    else:
+        full_set_plot_comparison(recentered_curves,geodesic, n_times,a,b)
+    
+    
+    
+def polynomial_regression(q_vector, n_times,q_times_1d,n_points):
+    """
+    THIS FUNCTION IS NOT COMPLETE
+    """
+    from scipy import odr
+    
+    x = q_times_1d
+    y = q_vector
+    poly_model = odr.polynomial(3)  # using third order polynomial model
+    data = odr.Data(x, y)
+    odr_obj = odr.ODR(data, poly_model)
+    output = odr_obj.run()  # running ODR fitting
+    poly = np.poly1d(output.beta[::-1])
+    poly_y = poly(x)
+    
+    starting_point_array = gs.zeros((n_times, 2))
+    
+    return poly_y, starting_point_array
+
+   
