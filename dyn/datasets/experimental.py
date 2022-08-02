@@ -11,6 +11,9 @@ from geomstats.geometry.pre_shape import PreShapeSpace
 from skimage import measure
 from skimage.filters import threshold_otsu
 
+#for septin cell alignment
+import cv2
+
 import dyn.dyn.features.basic as basic
 
 M_AMBIENT = 2
@@ -269,68 +272,6 @@ def load_mutated_retinal_cells(n_cells=-1, n_sampling_points=10):
 
     return preprocess(cells, surfaces, mutations, n_cells, n_sampling_points)
 
-
-def load_septin_cells(group, n_sampling_points):
-    """ Load dataset of septin control cells.
-    
-    There are three groups that we are considering: control, Septin Knockdown, Septin Overexpression.
-    
-    Notes
-    -----
-    There are 36 tif files in Control -> binary files
-    There are 45 tif files in Septin Knockdown -> binary files
-    There are 36 tif files in Septin Overexpression -> binary files
-    """
-    dataset_dir = os.path.dirname(os.path.realpath(__file__))
-    
-    # os.path.join finds the path that leads you to the file
-    # glob.glob finds and returns the file you are looking for and returns the data.
-    group_path = os.path.join(dataset_dir, "septin_groups/"+group+"/binary_images/*.tif")
-    group_tifs = glob.glob(group_path)
-    print('Loading '+group+' data')
-    print('n_sampling_points= '+str(n_sampling_points))
-
-    img_stack = skio.imread(group_tifs, plugin="tifffile")
-    n_images, height, width = img_stack.shape
-
-    cell_centers = gs.zeros((n_images, 2))
-    cell_shapes = gs.zeros((n_images, n_sampling_points, 2))
-    cell_imgs = gs.zeros((n_images, height, width))
-
-
-    # This converts all the images into a list of contours and images.
-    contours_list, imgs_list = _tif_video_to_lists(group_tifs)
-    group_labels=[]
-
-    for i_contour, (contour, img) in enumerate(zip(contours_list, imgs_list)):
-        interpolated = _interpolate(contour, n_sampling_points)
-        cleaned = _remove_consecutive_duplicates(interpolated)
-        center = gs.mean(cleaned, axis=-2)
-        centered = cleaned - center[..., None, :]
-        cell_centers[i_contour] = center
-        cell_shapes[i_contour] = centered
-        if img.shape != (height, width):
-            print(
-                "Found image of a different size: "
-                f"{img.shape} instead of {height, width}. "
-                "Skipped image (not cell contours)."
-            )
-            continue
-        cell_imgs[i_contour] = gs.array(img.astype(float).T)
-        group_labels.append(group)
-        
-    print("- Cell shapes: quotienting scaling (length).")
-    for i_cell, cell in enumerate(cell_shapes):
-        cell_shapes[i_cell] = cell / basic.perimeter(cell_shapes[i_cell])
-
-    print("- Cell shapes: quotienting rotation.")
-    for i_cell, cell_shape in enumerate(cell_shapes):
-        cell_shapes[i_cell] = _exhaustive_align(cell_shape, cell_shapes[0])
-        
-    return cell_centers, cell_shapes, cell_imgs, group_labels
-    
-
-    
 def load_trajectory_of_border_cells(n_sampling_points=10):
     """Load trajectories (or time-series) of border cell clusters.
 
@@ -429,3 +370,198 @@ def load_trajectory_of_border_cells(n_sampling_points=10):
             imgs_traj[i_traj, i_contour] = gs.array(img.astype(float).T)
     labels = gs.array(labels)
     return centers_traj, shapes_traj, imgs_traj, labels
+
+
+
+
+def find_circles(tif_path):
+    """
+    takes a tif, returns the coordinates of the small circle that was placed on the septin cell files
+    """
+
+    glob.glob(tif_path)
+
+    img = cv2.imread(tif_path)
+    
+    # detect circles in the image
+    circles = cv2.HoughCircles(img, cv2.HOUGH_GRADIENT, 1.2, 100)
+    
+    # ensure at least some circles were found
+    if circles is not None:
+        # convert the (x, y) coordinates and radius of the circles to integers
+        circles = np.round(circles[0, :]).astype("int")
+        
+    print(circles)
+
+def align_septin_cell(#curve, cell_center, 
+    tif_path):
+    """ 
+    This function aligns the curves so that they are pointing in the direction of motion.
+    More specifically, each file is marked by a small dot. we are aligning the curves so that the small dot
+    would fall on the left side of the picture frame.
+    
+    used tutorials:
+    https://pyimagesearch.com/2014/07/21/detecting-circles-images-using-opencv-hough-circles/
+    https://www.geeksforgeeks.org/how-to-detect-shapes-in-images-in-python-using-opencv/
+    
+    returns
+    -------
+    curve aligned so that the "direction of motion" is facing to the right.
+    """
+    
+    find_circles(tif_path)
+    
+    #return aligned_curve
+    
+    
+def draft_load_septin_cells(group, n_sampling_points):
+    """ Load dataset of septin control cells.
+    
+    There are three groups that we are considering: control, Septin Knockdown, Septin Overexpression.
+    
+    Notes
+    -----
+    There are 36 tif files in Control -> binary files
+    There are 45 tif files in Septin Knockdown -> binary files
+    There are 36 tif files in Septin Overexpression -> binary files
+    """
+    dataset_dir = os.path.dirname(os.path.realpath(__file__))
+    
+    # os.path.join finds the path that leads you to the file
+    # glob.glob finds and returns the file you are looking for and returns the data.
+    #group_path = os.path.join(dataset_dir, "septin_groups/"+group+"/binary_images/*.tif")
+    group_path = os.path.join(dataset_dir, "septin_groups/"+group+"/dotted_oriented_images/*.tif")
+    #align_septin_cell(group_path)
+    group_tifs = glob.glob(group_path)
+    print('Loading '+group+' data')
+    print('n_sampling_points= '+str(n_sampling_points))
+    
+    #this showed same shape as non-draft version, so this is not problem
+    group_tifs_array = np.array(group_tifs)
+    print(group_tifs_array.shape)
+    
+    
+    #before, was not working because new tifs are not grayscale
+    img_stack_list = []
+    for path in group_tifs:
+        img_stack_list.append(cv2.imread(group_tifs[0],0))
+    img_stack = np.array(img_stack_list)
+    print(img_stack.shape)
+        
+    #img_stack_extra = skio.imread(group_tifs, plugin="tifffile")
+    #img_stack=np.reshape(img_stack_extra, (36, 512, 512), order='C')
+    #print(img_stack)
+    #img_stack = img_stack_extra[0][:][:][:]
+    #print(img_stack.shape)
+    n_images, height, width = img_stack.shape
+
+    cell_centers = gs.zeros((n_images, 2))
+    cell_shapes = gs.zeros((n_images, n_sampling_points, 2))
+    cell_imgs = gs.zeros((n_images, height, width))
+
+
+    # This converts all the images into a list of contours and images.
+    # TO DO: NOT WORKING because again, images not grayscale
+    contours_list, imgs_list = _tif_video_to_lists(group_tifs)
+    group_labels=[]
+
+    for i_contour, (contour, img) in enumerate(zip(contours_list, imgs_list)):
+        interpolated = _interpolate(contour, n_sampling_points)
+        cleaned = _remove_consecutive_duplicates(interpolated)
+        center = gs.mean(cleaned, axis=-2)
+        centered = cleaned - center[..., None, :]
+        cell_centers[i_contour] = center
+        cell_shapes[i_contour] = centered
+        if img.shape != (height, width):
+            print(
+                "Found image of a different size: "
+                f"{img.shape} instead of {height, width}. "
+                "Skipped image (not cell contours)."
+            )
+            continue
+        cell_imgs[i_contour] = gs.array(img.astype(float).T)
+        group_labels.append(group)
+        
+    print("- Cell shapes: quotienting scaling (length).")
+    for i_cell, cell in enumerate(cell_shapes):
+        cell_shapes[i_cell] = cell / basic.perimeter(cell_shapes[i_cell])
+
+    print("- Cell shapes: quotienting rotation.")
+    for i_cell, cell_shape in enumerate(cell_shapes):
+        #change this line and replace it with something that aligns according to dot.
+        #might actually want to do this before the cell is centered. align the cell and then
+        #center it so that there are no issues with having to re-center the dot.
+        cell_shapes[i_cell] = _exhaustive_align(cell_shape, cell_shapes[0])
+        
+    return cell_centers, cell_shapes, cell_imgs, group_labels
+
+    
+
+    
+
+
+
+def load_septin_cells(group, n_sampling_points):
+    """ Load dataset of septin control cells.
+    
+    There are three groups that we are considering: control, Septin Knockdown, Septin Overexpression.
+    
+    Notes
+    -----
+    There are 36 tif files in Control -> binary files
+    There are 45 tif files in Septin Knockdown -> binary files
+    There are 36 tif files in Septin Overexpression -> binary files
+    """
+    dataset_dir = os.path.dirname(os.path.realpath(__file__))
+    
+    # os.path.join finds the path that leads you to the file
+    # glob.glob finds and returns the file you are looking for and returns the data.
+    group_path = os.path.join(dataset_dir, "septin_groups/"+group+"/binary_images/*.tif")
+    group_tifs = glob.glob(group_path)
+    print('Loading '+group+' data')
+    print('n_sampling_points= '+str(n_sampling_points))
+    
+    img_stack = skio.imread(group_tifs, plugin="tifffile")
+    n_images, height, width = img_stack.shape
+
+    cell_centers = gs.zeros((n_images, 2))
+    cell_shapes = gs.zeros((n_images, n_sampling_points, 2))
+    cell_imgs = gs.zeros((n_images, height, width))
+
+
+    # This converts all the images into a list of contours and images.
+    contours_list, imgs_list = _tif_video_to_lists(group_tifs)
+    group_labels=[]
+
+    for i_contour, (contour, img) in enumerate(zip(contours_list, imgs_list)):
+        interpolated = _interpolate(contour, n_sampling_points)
+        cleaned = _remove_consecutive_duplicates(interpolated)
+        center = gs.mean(cleaned, axis=-2)
+        centered = cleaned - center[..., None, :]
+        cell_centers[i_contour] = center
+        cell_shapes[i_contour] = centered
+        if img.shape != (height, width):
+            print(
+                "Found image of a different size: "
+                f"{img.shape} instead of {height, width}. "
+                "Skipped image (not cell contours)."
+            )
+            continue
+        cell_imgs[i_contour] = gs.array(img.astype(float).T)
+        group_labels.append(group)
+        
+    print("- Cell shapes: quotienting scaling (length).")
+    for i_cell, cell in enumerate(cell_shapes):
+        cell_shapes[i_cell] = cell / basic.perimeter(cell_shapes[i_cell])
+
+    print("- Cell shapes: quotienting rotation.")
+    for i_cell, cell_shape in enumerate(cell_shapes):
+        #change this line and replace it with something that aligns according to dot.
+        #might actually want to do this before the cell is centered. align the cell and then
+        #center it so that there are no issues with having to re-center the dot.
+        cell_shapes[i_cell] = _exhaustive_align(cell_shape, cell_shapes[0])
+        
+    return cell_centers, cell_shapes, cell_imgs, group_labels
+
+
+
