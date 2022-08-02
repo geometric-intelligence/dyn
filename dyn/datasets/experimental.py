@@ -393,8 +393,7 @@ def find_circles(tif_path):
         
     print(circles)
 
-def align_septin_cell(#curve, cell_center, 
-    tif_path):
+def septin_rotation_angle(cell_center,tif_path):
     """ 
     This function aligns the curves so that they are pointing in the direction of motion.
     More specifically, each file is marked by a small dot. we are aligning the curves so that the small dot
@@ -409,9 +408,33 @@ def align_septin_cell(#curve, cell_center,
     curve aligned so that the "direction of motion" is facing to the right.
     """
     
-    find_circles(tif_path)
+    #coordinates of the left middle of the image. determine this based on what x and y circle are.
+    #x_left =
+    #y_left =
     
-    #return aligned_curve
+    #convert the (x, y) coordinates and radius of the circles
+    x_circle,y_circle,r = find_circles(tif_path)
+    
+    #defining points
+    left_point = [x_left,y_left]
+    circle_point = [x_circle, y_circle]
+    
+    #defining vector from center of curve to these points
+    left_vector = cell_center - left_point
+    circle_vector = cell_center - circle_point
+    
+    #unit vectors
+    left_vector_u = left_vector/ np.linalg.norm(left_vector)
+    circle_vector_u = circle_vector/ np.linalg.norm(circle_vector)
+    
+    #now, find the angle between the two vectors
+    theta = np.arccos(np.clip(np.dot(left_vector_u, circle_vector_u), -1.0, 1.0))
+    
+    return theta
+
+
+def septin_align(theta):
+    return aligned_cell
     
     
 def draft_load_septin_cells(group, n_sampling_points):
@@ -449,10 +472,6 @@ def draft_load_septin_cells(group, n_sampling_points):
     print(img_stack.shape)
         
     #img_stack_extra = skio.imread(group_tifs, plugin="tifffile")
-    #img_stack=np.reshape(img_stack_extra, (36, 512, 512), order='C')
-    #print(img_stack)
-    #img_stack = img_stack_extra[0][:][:][:]
-    #print(img_stack.shape)
     n_images, height, width = img_stack.shape
 
     cell_centers = gs.zeros((n_images, 2))
@@ -464,6 +483,7 @@ def draft_load_septin_cells(group, n_sampling_points):
     # TO DO: NOT WORKING because again, images not grayscale
     contours_list, imgs_list = _tif_video_to_lists(group_tifs)
     group_labels=[]
+    theta = []
 
     for i_contour, (contour, img) in enumerate(zip(contours_list, imgs_list)):
         interpolated = _interpolate(contour, n_sampling_points)
@@ -481,17 +501,22 @@ def draft_load_septin_cells(group, n_sampling_points):
             continue
         cell_imgs[i_contour] = gs.array(img.astype(float).T)
         group_labels.append(group)
+        #this would be the center of that original image, plus the path to that image.
+        theta.append(center,group_tifs[i_contour])
         
     print("- Cell shapes: quotienting scaling (length).")
     for i_cell, cell in enumerate(cell_shapes):
         cell_shapes[i_cell] = cell / basic.perimeter(cell_shapes[i_cell])
 
     print("- Cell shapes: quotienting rotation.")
+
     for i_cell, cell_shape in enumerate(cell_shapes):
         #change this line and replace it with something that aligns according to dot.
         #might actually want to do this before the cell is centered. align the cell and then
         #center it so that there are no issues with having to re-center the dot.
-        cell_shapes[i_cell] = _exhaustive_align(cell_shape, cell_shapes[0])
+        
+        
+        #cell_shapes[i_cell] = _exhaustive_align(cell_shape, cell_shapes[0])
         
     return cell_centers, cell_shapes, cell_imgs, group_labels
 
