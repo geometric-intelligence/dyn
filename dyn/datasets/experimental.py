@@ -8,11 +8,15 @@ import geomstats.datasets.utils as data_utils
 import numpy as np
 import skimage.io as skio
 from geomstats.geometry.pre_shape import PreShapeSpace
-from skimage import measure
-from skimage.filters import threshold_otsu
+from skimage import measure, io
+from skimage.filters import threshold_otsu, gaussian
 
 #for septin cell alignment
 import cv2
+import matplotlib.pyplot as plt
+import math as m
+import skimage.viewer as skview
+
 
 import dyn.dyn.features.basic as basic
 
@@ -49,6 +53,41 @@ def _tif_video_to_lists(tif_path):
 
     return contours_list, imgs_list
 
+
+def _septin_tif_video_to_lists(tif_path):
+    """Convert a cell video into two trajectories of contours and images.
+    
+    special for septin because they are rgb images
+
+    Parameters
+    ----------
+    tif_path : absolute path of video in .tif format.
+
+    Returns
+    -------
+    contours_list : list of arrays
+        List of 2D coordinates of points defining the contours of each cell
+        within the video.
+    imgs_list : list of array
+        List of images in the input video.
+    """
+    img_stack_list = []
+    for path in tif_path:
+        img_stack_list.append(cv2.imread(tif_path[0],0))
+    img_stack = np.array(img_stack_list)
+    contours_list = []
+    imgs_list = []
+    for img in img_stack:
+        imgs_list.append(img)
+        thresh = threshold_otsu(img)
+        binary = img > thresh
+        contours = measure.find_contours(binary, 0.8)
+        lengths = [len(c) for c in contours]
+        max_length = max(lengths)
+        index_max_length = lengths.index(max_length)
+        contours_list.append(contours[index_max_length])
+
+    return contours_list, imgs_list
 
 def _interpolate(curve, n_sampling_points):
     """Interpolate a discrete curve with nb_points from a discrete curve.
@@ -374,26 +413,66 @@ def load_trajectory_of_border_cells(n_sampling_points=10):
 
 
 
-def find_circles(tif_path):
+def _find_circle(tif_path):
     """
     takes a tif, returns the coordinates of the small circle that was placed on the septin cell files
-    """
-
-    glob.glob(tif_path)
-
-    img = cv2.imread(tif_path)
     
+    i am struggling with this. one idea is to do contours and then in the contours find the circles...
+    """
+    
+    #print(tif_path)
+    img = skio.imread(tif_path, plugin="tifffile")
+    #img = cv2.imread(tif_path,0)
+    
+    #print(np.nonzero(img))
+    
+    #sigma = 3.0
+    #blurred_img = gaussian(img, sigma=(sigma, sigma), truncate=3.5)
+    
+    #skview.ImageViewer( img) 
+    #skview.show()
+
+    
+    #plt.imshow(img)
+    #plt.show()
+    
+    #io.imshow(img)
+    #plt.show()
+    
+    #print(img)
+    #img = skio.imread(tif_path, plugin="tifffile")
+    
+    #img = cv2.normalize(src=img, dst=None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+    
+    #This is where the error is i think.
     # detect circles in the image
-    circles = cv2.HoughCircles(img, cv2.HOUGH_GRADIENT, 1.2, 100)
+    #circle = np.empty([1,1,1])
+    circle = cv2.HoughCircles(img, cv2.HOUGH_GRADIENT, dp= 1,minDist=100, param1=100, param2=10, minRadius = 1, maxRadius=10 )
+    #cv2.HoughCircles(img, circle, cv2.HOUGH_GRADIENT, dp= int(3),minDist=0,param1=10, param2=60, minRadius = 0, maxRadius= -1)
+       
+    #this returns "no circles found"
+    #circle = cv2.HoughCircles(img, cv2.HOUGH_GRADIENT, dp= 1, minDist = 1)
+        
+    #circle = cv2.HoughCircles(img, cv2.HOUGH_GRADIENT, 1, 10, np.array([]), 79, 23, 0, 100)
+    circle_array = np.array(circle)
+    #print(circle_array)
+    #print(len(circle))
     
     # ensure at least some circles were found
-    if circles is not None:
+    #if not circle:
+    if not circle_array.any():
+        print("No circles found")
+    else:
+    #if circle is not None:
         # convert the (x, y) coordinates and radius of the circles to integers
-        circles = np.round(circles[0, :]).astype("int")
-        
-    print(circles)
+        circle_array = np.round(circle_array).astype("int")
+    #else:
+        #print("No circles found")
+    
+    print(circle_array)
+    return circle_array
 
-def septin_rotation_angle(cell_center,tif_path):
+def _septin_rotation_angle(cell_center,tif_path):
     """ 
     This function aligns the curves so that they are pointing in the direction of motion.
     More specifically, each file is marked by a small dot. we are aligning the curves so that the small dot
@@ -413,7 +492,18 @@ def septin_rotation_angle(cell_center,tif_path):
     #y_left =
     
     #convert the (x, y) coordinates and radius of the circles
-    x_circle,y_circle,r = find_circles(tif_path)
+    #x_circle,y_circle,r = _find_circle(tif_path)
+    
+    ############
+    #testing. once we can get x,y coordinates of the circle, then we can use stuff above.
+    cell_center = np.array([0.5,0.5])
+    
+    x_left = 0
+    y_left = 0.5
+    
+    x_circle= 0.5
+    y_circle = 0
+    #############
     
     #defining points
     left_point = [x_left,y_left]
@@ -430,11 +520,19 @@ def septin_rotation_angle(cell_center,tif_path):
     #now, find the angle between the two vectors
     theta = np.arccos(np.clip(np.dot(left_vector_u, circle_vector_u), -1.0, 1.0))
     
+    #works! returns pi/2
+    #print(theta)
     return theta
 
 
-def septin_align(theta):
-    return aligned_cell
+def _septin_align(curve, theta):
+    
+    rotation = np.array([[ m.cos(theta), -m.sin(theta)],
+                     [ m.sin(theta), m.cos(theta) ]])
+                     
+    aligned_curve = curve@rotation.T
+    
+    return aligned_curve
     
     
 def draft_load_septin_cells(group, n_sampling_points):
@@ -453,25 +551,36 @@ def draft_load_septin_cells(group, n_sampling_points):
     # os.path.join finds the path that leads you to the file
     # glob.glob finds and returns the file you are looking for and returns the data.
     #group_path = os.path.join(dataset_dir, "septin_groups/"+group+"/binary_images/*.tif")
-    group_path = os.path.join(dataset_dir, "septin_groups/"+group+"/dotted_oriented_images/*.tif")
+    group_path = os.path.join(dataset_dir, "septin_groups/"+group+"/dotted_binary_images/*.tif")
     #align_septin_cell(group_path)
     group_tifs = glob.glob(group_path)
     print('Loading '+group+' data')
     print('n_sampling_points= '+str(n_sampling_points))
     
+    
+    
+    #test_paths = os.path.join(dataset_dir, "septin_groups/"+group+"/dotted_oriented_images/BINARY_TEST.tif")
+    #test_tifs = glob.glob(test_paths)
+    
+    #test_tifs_array = np.array(test_tifs)
+    #print(test_tifs_array.shape)
+    
+    #img_stack_test = skio.imread(test_tifs, plugin="tifffile")
+    #print(img_stack_test.shape)
+    
     #this showed same shape as non-draft version, so this is not problem
-    group_tifs_array = np.array(group_tifs)
-    print(group_tifs_array.shape)
+    #group_tifs_array = np.array(group_tifs)
+    #print(group_tifs_array.shape)
     
     
     #before, was not working because new tifs are not grayscale
-    img_stack_list = []
-    for path in group_tifs:
-        img_stack_list.append(cv2.imread(group_tifs[0],0))
-    img_stack = np.array(img_stack_list)
-    print(img_stack.shape)
+    #img_stack_list = []
+    #for path in group_tifs:
+    #    img_stack_list.append(cv2.imread(group_tifs[0],0))
+    #img_stack = np.array(img_stack_list)
+    #print(img_stack.shape)
         
-    #img_stack_extra = skio.imread(group_tifs, plugin="tifffile")
+    img_stack = skio.imread(group_tifs, plugin="tifffile")
     n_images, height, width = img_stack.shape
 
     cell_centers = gs.zeros((n_images, 2))
@@ -480,7 +589,6 @@ def draft_load_septin_cells(group, n_sampling_points):
 
 
     # This converts all the images into a list of contours and images.
-    # TO DO: NOT WORKING because again, images not grayscale
     contours_list, imgs_list = _tif_video_to_lists(group_tifs)
     group_labels=[]
     theta = []
@@ -501,22 +609,27 @@ def draft_load_septin_cells(group, n_sampling_points):
             continue
         cell_imgs[i_contour] = gs.array(img.astype(float).T)
         group_labels.append(group)
+        
+        theta.append(_septin_rotation_angle(center,group_tifs[i_contour]))
+        
+        #putting this here just for testing
+        _find_circle(group_tifs[i_contour])
+        
         #this would be the center of that original image, plus the path to that image.
-        theta.append(center,group_tifs[i_contour])
+        #print(septin_rotation_angle(center,group_tifs[i_contour]))
+        #theta.append(septin_rotation_angle(center,group_tifs[i_contour]))
+    theta_array = np.array(theta)
         
     print("- Cell shapes: quotienting scaling (length).")
     for i_cell, cell in enumerate(cell_shapes):
         cell_shapes[i_cell] = cell / basic.perimeter(cell_shapes[i_cell])
 
-    print("- Cell shapes: quotienting rotation.")
+    print("- Cell shapes: properly aligning in direction of motion.")
 
     for i_cell, cell_shape in enumerate(cell_shapes):
         #change this line and replace it with something that aligns according to dot.
-        #might actually want to do this before the cell is centered. align the cell and then
-        #center it so that there are no issues with having to re-center the dot.
-        
-        
-        #cell_shapes[i_cell] = _exhaustive_align(cell_shape, cell_shapes[0])
+        print(theta[i_cell])
+        cell_shapes[i_cell] = _septin_align(cell_shape, theta[i_cell])
         
     return cell_centers, cell_shapes, cell_imgs, group_labels
 
@@ -524,6 +637,34 @@ def draft_load_septin_cells(group, n_sampling_points):
 
     
 
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
 
 
 def load_septin_cells(group, n_sampling_points):
