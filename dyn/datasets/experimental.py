@@ -417,7 +417,13 @@ def _find_circle(tif_path):
     """
     takes a tif, returns the coordinates of the small circle that was placed on the septin cell files
     
-    i am struggling with this. one idea is to do contours and then in the contours find the circles...
+    the key function here is cv2.HoughCircles. But we needed very specific parameters in order to get the function
+    to detect our cirlces. 
+    - minDist = 100 we knew that there was only one cirlce in the image, so we set this to be high so that there was no
+        way to get a false duplicate
+    - param1 = 100 we set this parameter to be high because "threshold value shough normally be higher, such as 300 or normally exposed and contrasty images."
+    - param2 = 10 we set this parameter to be low for detecting small circles
+    - minRadius =1, maxRadius = 10. We knew that our cirlces were only a few pixels wide (5), so we set these parameters acordingly
     """
     
     #print(tif_path)
@@ -469,8 +475,8 @@ def _find_circle(tif_path):
     #else:
         #print("No circles found")
     
-    print(circle_array)
-    return circle_array
+    print(circle_array[0][0])
+    return circle_array[0][0]
 
 def _septin_rotation_angle(cell_center,tif_path):
     """ 
@@ -482,32 +488,44 @@ def _septin_rotation_angle(cell_center,tif_path):
     https://pyimagesearch.com/2014/07/21/detecting-circles-images-using-opencv-hough-circles/
     https://www.geeksforgeeks.org/how-to-detect-shapes-in-images-in-python-using-opencv/
     
+    
+    x_left and y_left are set at the left side of the image frame. the y_left coordiante is set at the same coordinate
+    as the cell_center y coordinate so that we have an appropriate angle for which we can rotate the cell so that the 
+    "dotted" position is facing the left of the image.
+    
+    the picture frame is a square with side lengths 512, so the center of the left edge falls at (0,256)
+    
     returns
     -------
     curve aligned so that the "direction of motion" is facing to the right.
     """
     
     #coordinates of the left middle of the image. determine this based on what x and y circle are.
-    #x_left =
-    #y_left =
+    x_left =0
+    y_left =cell_center[1]
+    #print(cell_center)
+    #print(y_left)
     
     #convert the (x, y) coordinates and radius of the circles
-    #x_circle,y_circle,r = _find_circle(tif_path)
+    x_circle,y_circle,r = _find_circle(tif_path)
     
     ############
     #testing. once we can get x,y coordinates of the circle, then we can use stuff above.
-    cell_center = np.array([0.5,0.5])
+    #cell_center = np.array([0.5,.5])
     
-    x_left = 0
-    y_left = 0.5
+    #x_left = 0
+    #y_left = 0.5
     
-    x_circle= 0.5
-    y_circle = 0
+    #x_circle= 0.5
+    #y_circle = 0
     #############
     
     #defining points
-    left_point = [x_left,y_left]
-    circle_point = [x_circle, y_circle]
+    left_point = np.array([x_left,y_left])
+    circle_point = np.array([x_circle, y_circle])
+    
+    cell_center_tensor = cell_center
+    cell_center = np.array(cell_center_tensor)
     
     #defining vector from center of curve to these points
     left_vector = cell_center - left_point
@@ -521,7 +539,6 @@ def _septin_rotation_angle(cell_center,tif_path):
     theta = np.arccos(np.clip(np.dot(left_vector_u, circle_vector_u), -1.0, 1.0))
     
     #works! returns pi/2
-    #print(theta)
     return theta
 
 
@@ -545,6 +562,11 @@ def draft_load_septin_cells(group, n_sampling_points):
     There are 36 tif files in Control -> binary files
     There are 45 tif files in Septin Knockdown -> binary files
     There are 36 tif files in Septin Overexpression -> binary files
+    
+    current problem: i think that the algorithm does not know whether to rotate left or whether to rotate right (to get
+    the dots aligned)
+    
+    actually, also instead of aligning the dots to the middle of the frame, we should be aligning them to the y coordinate of the cell center.
     """
     dataset_dir = os.path.dirname(os.path.realpath(__file__))
     
@@ -582,6 +604,7 @@ def draft_load_septin_cells(group, n_sampling_points):
         
     img_stack = skio.imread(group_tifs, plugin="tifffile")
     n_images, height, width = img_stack.shape
+    print(img_stack.shape)
 
     cell_centers = gs.zeros((n_images, 2))
     cell_shapes = gs.zeros((n_images, n_sampling_points, 2))
@@ -613,7 +636,7 @@ def draft_load_septin_cells(group, n_sampling_points):
         theta.append(_septin_rotation_angle(center,group_tifs[i_contour]))
         
         #putting this here just for testing
-        _find_circle(group_tifs[i_contour])
+        #_find_circle(group_tifs[i_contour])
         
         #this would be the center of that original image, plus the path to that image.
         #print(septin_rotation_angle(center,group_tifs[i_contour]))
