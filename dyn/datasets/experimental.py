@@ -577,13 +577,13 @@ def _determine_angle_sign(left_vector, circle_vector):
     return positive
 
 
-# def _hack_determine_angle_sign(left_vector,circle_vector):
-#     if left_vector[1] < circle_vector[1]:
-#         positive = False
-#     else:
-#         positive = True
+def _hack_determine_angle_sign(left_vector, circle_vector):
+    if left_vector[1] < circle_vector[1]:
+        positive = True
+    else:
+        positive = False
 
-#     return positive
+    return positive
 
 
 def _septin_rotation_angle(cell_center, tif_path):
@@ -652,7 +652,7 @@ def _septin_rotation_angle(cell_center, tif_path):
     left_vector_u = left_vector / np.linalg.norm(left_vector)
     circle_vector_u = circle_vector / np.linalg.norm(circle_vector)
 
-    positive = _determine_angle_sign(left_vector, circle_vector)
+    positive = _hack_determine_angle_sign(left_vector, circle_vector)
 
     # now, find the angle between the two vectors
 
@@ -785,7 +785,7 @@ def _septin_align(curve, theta):
 #     return cell_centers, cell_shapes, cell_imgs, group_labels
 
 
-def draft_draft_load_septin_cells(group, n_sampling_points):
+def load_septin_cells(group, n_sampling_points):
     """Load dataset of septin control cells.
 
     There are three groups that we are considering: control, Septin Knockdown,
