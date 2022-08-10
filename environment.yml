@@ -9,6 +9,7 @@ dependencies:
     - autograd
     - git+https://github.com/geomstats/geomstats.git
     - jupyter
+    - jupyterlab-code-formatter
     - mat73
     - numba
     - numpy>=1.23.0
