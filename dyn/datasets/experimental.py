@@ -224,8 +224,12 @@ def preprocess(
 
     if "rotation" in quotient:
         print("- Cell shapes: quotienting rotation.")
-        for i_cell, cell_shape in enumerate(cells):
-            cell_shapes[i_cell] = _exhaustive_align(cell_shape, cells[0])
+        if "scaling" not in quotient:
+            for i_cell, cell_shape in enumerate(cells):
+                cell_shapes[i_cell] = _exhaustive_align(cell_shape, cells[0])
+        else:
+            for i_cell, cell_shape in enumerate(cell_shapes):
+                cell_shapes[i_cell] = _exhaustive_align(cell_shape, cell_shapes[0])
 
     return cells, cell_shapes, labels_a, labels_b
 
