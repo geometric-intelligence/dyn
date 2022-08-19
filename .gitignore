@@ -8,6 +8,7 @@ dyn/datasets/septin.zip
 dyn/datasets/septin3d.zip
 dyn/saved_figs/osteosarcoma/*
 dyn/saved_figs/retinal/*
+dyn/datasets/septin_groups/*
 
 # VScode config
 .DS_Store
