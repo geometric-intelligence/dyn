@@ -13,3 +13,7 @@ Next, i will need to make another file that tests these values against common va
 therefore, we will have one file to train, another to validate, another to test.. either
 that, or i will include that in this notebook.
 """
+
+# import dyn.dyn.features.f_fit_functions as ffit
+
+# def

@@ -467,6 +467,45 @@ def optimize_ab_linear(geodesic):
     return best_a, best_b, max_r2
 
 
+def rmse(geodesic, a, b, degree=2, split=True):
+    """Return root mean squared error for a given geodesic, a, b, degree."""
+    # CLOSED_CURVES_SPACE = ClosedDiscreteCurves(R2)
+
+    n_times = len(geodesic)
+    n_points = len(geodesic[0])
+
+    print(geodesic.shape)
+
+    # instates an object elastic_metric of the class ElasticMetric
+    elastic_metric = ElasticMetric(a, b, ambient_manifold=R2)
+
+    # q_tensor = elastic_metric.f_transform(geods_circle_ell[0])
+    q_tensor = elastic_metric.f_transform(geodesic)
+
+    q = np.array(q_tensor)
+    print(q.shape)
+
+    # reshape q into a compressed vector.
+    q_vector = q.reshape((n_times, -1))
+
+    # Now, i need to create an array that only has the times
+    q_times_1d = gs.arange(0, n_times, 1)
+
+    if split:
+        # ToDo: don't pass n_times. instead, compute n_times from len(q_times_1d).
+        # n_points is second dimension of q_vector divided by 2 plus 1.
+        q_tensor_predict, starting_point_array, rmse = polynomial_regression(
+            q_vector, n_times, q_times_1d, n_points, degree
+        )
+
+    else:
+        q_tensor_predict, starting_point_array, rmse = polynomial_regression(
+            q_vector, n_times, q_times_1d, n_points, degree
+        )
+
+    return rmse
+
+
 def ftrans_plot_predictions_nongeodesic(geodesic, a, b, degree=2, split=True):
     """Perform non-geodesic regression and plot results against data.
 
@@ -507,12 +546,12 @@ def ftrans_plot_predictions_nongeodesic(geodesic, a, b, degree=2, split=True):
     if split:
         # ToDo: don't pass n_times. instead, compute n_times from len(q_times_1d).
         # n_points is second dimension of q_vector divided by 2 plus 1.
-        q_tensor_predict, starting_point_array = polynomial_regression(
+        q_tensor_predict, starting_point_array, rmse = polynomial_regression(
             q_vector, n_times, q_times_1d, n_points, degree
         )
 
     else:
-        q_tensor_predict, starting_point_array = polynomial_regression(
+        q_tensor_predict, starting_point_array, rmse = polynomial_regression(
             q_vector, n_times, q_times_1d, n_points, degree
         )
 
@@ -562,7 +601,7 @@ def polynomial_regression(q_vector, n_times, q_times_1d, n_points, deg):
 
     starting_point_array = gs.zeros((n_times, 2))
 
-    return y_poly_pred_tensor, starting_point_array
+    return y_poly_pred_tensor, starting_point_array, rmse
 
 
 def half_set_polynomial_regression(q_vector, n_times, q_times_1d, n_points, deg):
@@ -604,6 +643,11 @@ def half_set_polynomial_regression(q_vector, n_times, q_times_1d, n_points, deg)
     model.fit(x_poly, y)
     y_poly_pred = model.predict(q_times_test)
 
+    rmse = np.sqrt(mean_squared_error(y, y_poly_pred))
+    r2 = r2_score(y, y_poly_pred)
+    print(rmse)
+    print(r2)
+
     # de-compress the vector (turn it back into its original shape)
     y_poly_pred_array = np.reshape(
         y_poly_pred, (n_times - half_n_times, n_points - 1, 2)
@@ -626,4 +670,4 @@ def half_set_polynomial_regression(q_vector, n_times, q_times_1d, n_points, deg)
     # do the transform
     starting_point_array = gs.zeros((n_times - half_n_times, 2))
 
-    return y_poly_pred_tensor, starting_point_array
+    return y_poly_pred_tensor, starting_point_array, rmse
