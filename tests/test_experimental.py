@@ -20,13 +20,13 @@ def test_load_treated_osteosarcoma_cells():
         lines,
         treatments,
     ) = experimental.load_treated_osteosarcoma_cells(
-        n_cells=n_cells, n_sampling_points=n_sampling_points
+        n_cells=n_cells, n_sampling_points=n_sampling_points, quotient=["scaling", "rotation"]
     )
     assert cells.shape == (n_cells, n_sampling_points, 2), cells.shape
     assert len(lines) == n_cells, len(lines)
     assert len(treatments) == n_cells, len(treatments)
     for cell in cell_shapes:
-        assert np.allclose(basic.perimeter(cell), 1.0)
+        assert np.allclose(basic.perimeter(cell), 1.0), basic.perimeter(cell)
 
 
 def test_load_mutated_retinal_cells():

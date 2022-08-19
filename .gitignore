@@ -4,8 +4,10 @@ dyn/datasets/mutated_retinal_cells.zip
 dyn/datasets/single_border_protusion_cells/*
 dyn/datasets/single_border_protusion_cells.zip
 dyn/datasets/drug_surviving_cells/*
-dyn/datasets/septin_groups.zip
-dyn/datasets/septin_groups/*
+dyn/datasets/septin.zip
+dyn/datasets/septin3d.zip
+dyn/saved_figs/osteosarcoma/*
+dyn/saved_figs/retinal/*
 
 # VScode config
 .DS_Store

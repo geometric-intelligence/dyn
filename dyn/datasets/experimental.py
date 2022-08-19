@@ -8,11 +8,14 @@ import os
 import cv2
 import geomstats.backend as gs
 import geomstats.datasets.utils as data_utils
+import matplotlib.pyplot as plt
 import numpy as np
 import skimage.io as skio
+
+import skimage.viewer as skview
 from geomstats.geometry.pre_shape import PreShapeSpace
-from skimage import measure
-from skimage.filters import threshold_otsu
+from skimage import io, measure
+from skimage.filters import gaussian, threshold_otsu
 
 import dyn.dyn.features.basic as basic
 
@@ -123,7 +126,7 @@ def _remove_consecutive_duplicates(curve, tol=1e-2):
     dist_norm = gs.sqrt(gs.sum(dist**2, axis=1))
 
     if gs.any(dist_norm < tol):
-        for i in range(len(curve) - 1):
+        for i in range(len(curve) - 2):
             if gs.sqrt(gs.sum((curve[i + 1] - curve[i]) ** 2, axis=0)) < tol:
                 curve[i + 1] = (curve[i] + curve[i + 2]) / 2
 
@@ -162,7 +165,14 @@ def _exhaustive_align(curve, base_curve):
     return aligned_curve
 
 
-def preprocess(cells, labels_a, labels_b, n_cells, n_sampling_points):
+def preprocess(
+    cells,
+    labels_a,
+    labels_b,
+    n_cells,
+    n_sampling_points,
+    quotient=["scaling", "rotation"],
+):
     """Preprocess a dataset of cells.
 
     Parameters
@@ -183,6 +193,7 @@ def preprocess(cells, labels_a, labels_b, n_cells, n_sampling_points):
         indices = sorted(
             np.random.choice(gs.arange(0, len(cells), 1), size=n_cells, replace=False)
         )
+        last_id = indices[-1]
         cells = [cells[idx] for idx in indices]
         labels_a = [labels_a[idx] for idx in indices]
         labels_b = [labels_b[idx] for idx in indices]
@@ -192,30 +203,40 @@ def preprocess(cells, labels_a, labels_b, n_cells, n_sampling_points):
             "... Interpolating: "
             f"Cell boundaries have {n_sampling_points} samplings points."
         )
+        interpolated_cells = gs.zeros((n_cells, n_sampling_points, 2))
         for i_cell, cell in enumerate(cells):
-            cells[i_cell] = _interpolate(cell, n_sampling_points)
-        cells = gs.stack(cells, axis=0)
+            interpolated_cells[i_cell] = _interpolate(cell, n_sampling_points)
+
+        cells = interpolated_cells
 
     print("... Removing potential duplicate sampling points on cell boundaries.")
     for i_cell, cell in enumerate(cells):
         cells[i_cell] = _remove_consecutive_duplicates(cell)
 
-    print("\n- Cells and cell shapes: quotienting translation.")
+    print("\n- Cells: quotienting translation.")
     cells = cells - gs.mean(cells, axis=-2)[..., None, :]
 
-    print("- Cell shapes: quotienting scaling (length).")
     cell_shapes = gs.zeros_like(cells)
-    for i_cell, cell in enumerate(cells):
-        cell_shapes[i_cell] = cell / basic.perimeter(cell)
+    if "scaling" in quotient:
+        print("- Cell shapes: quotienting scaling (length).")
+        for i_cell, cell in enumerate(cells):
+            cell_shapes[i_cell] = cell / basic.perimeter(cell)
 
-    print("- Cell shapes: quotienting rotation.")
-    for i_cell, cell_shape in enumerate(cell_shapes):
-        cell_shapes[i_cell] = _exhaustive_align(cell_shape, cell_shapes[0])
+    if "rotation" in quotient:
+        print("- Cell shapes: quotienting rotation.")
+        if "scaling" not in quotient:
+            for i_cell, cell_shape in enumerate(cells):
+                cell_shapes[i_cell] = _exhaustive_align(cell_shape, cells[0])
+        else:
+            for i_cell, cell_shape in enumerate(cell_shapes):
+                cell_shapes[i_cell] = _exhaustive_align(cell_shape, cell_shapes[0])
 
     return cells, cell_shapes, labels_a, labels_b
 
 
-def load_treated_osteosarcoma_cells(n_cells=-1, n_sampling_points=10):
+def load_treated_osteosarcoma_cells(
+    n_cells=-1, n_sampling_points=10, quotient=["scaling", "rotation"]
+):
     """Load dataset of osteosarcoma cells (bone cancer cells).
 
     This cell dataset contains cell boundaries of mouse osteosarcoma
@@ -249,10 +270,14 @@ def load_treated_osteosarcoma_cells(n_cells=-1, n_sampling_points=10):
         List of the treatments given to each cell (control, cytd or jasp).
     """
     cells, lines, treatments = data_utils.load_cells()
-    return preprocess(cells, lines, treatments, n_cells, n_sampling_points)
+    return preprocess(
+        cells, lines, treatments, n_cells, n_sampling_points, quotient=quotient
+    )
 
 
-def load_mutated_retinal_cells(n_cells=-1, n_sampling_points=10):
+def load_mutated_retinal_cells(
+    n_cells=-1, n_sampling_points=10, quotient=["scaling", "rotation"]
+):
     """Load dataset of mutated retinal cells.
 
     The cells are grouped by mutation in the dataset :
@@ -298,6 +323,7 @@ def load_mutated_retinal_cells(n_cells=-1, n_sampling_points=10):
         open("dyn/datasets/mutated_retinal_cells/mutations.txt", "r").read().split("\n")
     )
 
+    cells = cells[:-1]  # the last line is blank, and cannot be removed
     for i, cell in enumerate(cells):
         cell = cell.split("\n")
         curve = []
@@ -306,7 +332,10 @@ def load_mutated_retinal_cells(n_cells=-1, n_sampling_points=10):
             curve.append(coords)
         cells[i] = gs.cast(gs.array(curve), gs.float32)
 
-    return preprocess(cells, surfaces, mutations, n_cells, n_sampling_points)
+    return preprocess(
+        cells, surfaces, mutations, n_cells, n_sampling_points, quotient=quotient
+    )
+
 
 
 def load_trajectory_of_border_cells(n_sampling_points=10):
@@ -593,7 +622,6 @@ def _septin_rotation_angle(cell_center, tif_path):
     motion.
     More specifically, each file is marked by a small dot. we are aligning the curves
     so that the small dot would fall on the left side of the picture frame.
-
     used tutorials:
     https://pyimagesearch.com/2014/07/21/detecting-circles-images-using-opencv-hough-circles/
     https://www.geeksforgeeks.org/how-to-detect-shapes-in-images-in-python-using-opencv/
@@ -672,7 +700,6 @@ def _septin_align(curve, theta):
     aligned_curve = curve @ rotation.T
 
     return aligned_curve
-
 
 # def draft_load_septin_cells(group, n_sampling_points):
 #     """ Load dataset of septin control cells.
@@ -805,8 +832,10 @@ def load_septin_cells(group, n_sampling_points):
     """
     dataset_dir = os.path.dirname(os.path.realpath(__file__))
 
+
     group_path = os.path.join(
         dataset_dir, "septin_groups/" + group + "/dotted_binary_images/*.tif"
+
     )
     group_tifs = glob.glob(group_path)
     print("Loading " + group + " data")
@@ -823,6 +852,7 @@ def load_septin_cells(group, n_sampling_points):
     # This converts all the images into a list of contours and images.
     contours_list, imgs_list = _tif_video_to_lists(group_tifs)
     group_labels = []
+
     theta = []
     circle_coords = []
     lefts = []
@@ -865,6 +895,7 @@ def load_septin_cells(group, n_sampling_points):
     print("- Cell shapes: properly aligning in direction of motion.")
 
     for i_cell, cell_shape in enumerate(cell_shapes):
+
         print("theta " + str(i_cell) + " : " + str(theta[i_cell]))
         cell_shapes[i_cell] = _septin_align(cell_shape, theta[i_cell])
 

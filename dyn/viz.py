@@ -13,7 +13,6 @@ def init_matplotlib():
     matplotlib.rc("axes", titlesize=21, labelsize=14)
     matplotlib.rc(
         "font",
-        family="times",
-        serif=["Computer Modern Roman"],
-        monospace=["Computer Modern Typewriter"],
+        family="sans-serif",
+        monospace=["Arial"],
     )
