@@ -20,6 +20,7 @@ import geomstats.backend as gs
 
 # import matplotlib.pyplot as plt
 import numpy as np
+from geomstats.geometry.discrete_curves import R2, ElasticMetric
 
 # import torch
 
@@ -44,12 +45,92 @@ import numpy as np
 os.environ["GEOMSTATS_BACKEND"] = "pytorch"
 
 
-def capital_c(curve):
+# def c_prime(curve):
+#     """Calculate c prime.
+
+#     parameters:
+#     -----------
+#     velocity: c prime
+#     speeds: norm of velocity.
+
+#     note that c prime is just the derivative between points along
+#     the curve. it is not the time derivative of the curve along
+#     the manifold.
+#     """
+#     n_sampling_points = curve.shape[-2]
+#     velocity = (n_sampling_points - 1) * (curve[..., 1:, :] - curve[..., :-1, :])
+#     polar_velocity = self.cartesian_to_polar(velocity)
+#     speeds = polar_velocity[..., :, 0]
+#     args = polar_velocity[..., :, 1]
+
+#     c_prime_norm = * gs.sqrt(speeds)
+
+#     return c_prime_norm
+
+
+# def sqrt_norm_c_prime(curve):
+#     """Calculate the square root of the norm of c prime.
+
+#     might not need, if we use f transform function...
+#     """
+#     return np.sqrt(gs.linalg.norm(c_prime(curve)))
+
+
+def tau_jl(curve, j, degree_index, times):
+    """Calculate tau_jl.
+
+    Damn... might need to do some matrix multiplication.
+    make a vector of betas.
+
+    then beta[0] = tau_j0
+    beta[1] = tau_j1
+    etc.
+
+    waiiiittt actually, looking at equation 12.
+    maybe better to take f out of dr_da equation becaues beta actually
+    includes q_i which is the f transform.
+
+    yes, so just have an entire function dedicated to calculating the
+    vector beta
+
+    so my goal is to find dr/da in terms of beta. I want to do this
+    becasue i am going to have to do the matrix multiplication anyway in
+    order to calculate these tau's.
+
+
+    ACTUALLY:
+    new idea: now, i think we are just going to calculate the tau matrix
+    we might be able to combine the tau_ij and the tau_jl functions into
+    one tau matrix.
+
+    no... ok, so tau_jl is the tau matrix ((X^T)X)^-1*X^T
+    so we just have to calculate that, which essentially means
+    we just have to calculate the X matrix, its transverse,
+    and the inverse of those two matrices multiplied.
+    """
+
+
+def tau_ij(curve, degree, i, j, times):
+    """Calculate tau_ij.
+
+    tau_ij is the sum of a bunch of tau_jl's.
+
+    variables:
+    degree: polynomial degree
+    l: the sum over degrees
+    """
+    tau_jl_sum = 0
+    for degree_index in range(degree):
+        tau_jl_sum += tau_jl(curve, j, degree_index, times) * times[i] ** degree_index
+
+    return tau_jl_sum
+
+
+def capital_c(curve, elastic_metric):
     """Compute capital c.
 
     C is the derivative of the curve divided by the norm of the
     derivativeof the curve.
-    IN PROGRESS.
     """
     # question: how to compute derivative of curve...
     # norm is gs.norm right? --yes
@@ -57,67 +138,73 @@ def capital_c(curve):
     # between sampling points. example in f transform
     # in geomstats
 
+    n_sampling_points = curve.shape[-2]
+    velocity = (n_sampling_points - 1) * (curve[..., 1:, :] - curve[..., :-1, :])
+    polar_velocity = elastic_metric.cartesian_to_polar(velocity)
+    # QUESTION: what are these dots?
+    # speeds = polar_velocity[..., :, 0]
+    args = polar_velocity[..., :, 1]
 
-def c_prime(curve):
-    """Calculate c prime.
+    # QUESTION: why do all these calculations in polar?
+    capital_c_polar = args * elastic_metric.a
+    # c_prime_norm_sqrt = gs.sqrt(speeds)
+    capital_c_cartesian = elastic_metric.polar_to_cartesian(capital_c_polar)
 
-    IN PROGRESS.
-    """
-    # in progress
+    #     QUESTION: why is args multiplied by the exponent instead of not...
+    #     f_args = args * self.a / (2 * self.b)
+    #     f_norms = 2 * self.b * gs.sqrt(speeds)
+    # QUESTION: what is this stack thing?
+    #     f_polar = gs.stack([f_norms, f_args], axis=-1)
+    #     f_cartesian = self.polar_to_cartesian(f_polar)
 
-    return curve
-
-
-def sqrt_norm_c_prime(curve):
-    """Calculate the square root of the norm of c prime.
-
-    might not need, if we use f transform function...
-    """
-    return np.sqrt(gs.linalg.norm(c_prime(curve)))
-
-
-def tau_ij(curve):
-    """Calculate tau_ij.
-
-    tau_ij is the sum of a bunch of tau_jl's.
-    IN PROGRESS.
-    """
-    return curve
+    return capital_c_cartesian
 
 
-def dr_da(i, curve_trajectory, a, n, degree):
+def dr_da(i, curve_trajectory, elastic_metric, n, degree):
     """Calculate the derivative of r_i w.r.t. a.
 
-    In progress. I am currently trying to figure out the easiest way to
-    calculate c prime. looking at f_transform in geomstats.
-    potentially will use that function or just try to understand it
-    and implement something similar here.
+    Utilizes f_transform in discrete_curves to calculate
+    (sqrt of the norm of c prime) multiplied by (capital c
+    to the power of a). remember that when we initialized
+    elastic_metric, we set b= 0.5.
 
-    Can't rely soleley on f_transform because i need to calculate
-    log(Capital C).
-    IN PROGRESS.
+    returns:
+    dr_da: the derivative of r_i w.r.t. a.
     """
-    sqrt_norm_c_i_prime = sqrt_norm_c_prime(curve_trajectory[i])
-    cap_c_i = capital_c(curve_trajectory[i])
+    n_times = len(curve_trajectory)
+    times = gs.arange(0, n_times, 1)
+
+    # sqrt_norm_c_i_prime = sqrt_norm_c_prime(curve_trajectory[i])
+    cap_c_i = capital_c(curve_trajectory[i], elastic_metric)
 
     j_sum = 0
     for j in range(n):
-        sqrt_norm_c_j_prime = sqrt_norm_c_prime(curve_trajectory[j])
-        cap_c_j = capital_c(curve_trajectory[j])
+        # sqrt_norm_c_j_prime = sqrt_norm_c_prime(curve_trajectory[j])
+        cap_c_j = capital_c(curve_trajectory[j], elastic_metric)
 
         j_sum += (
-            tau_ij(curve_trajectory[j])
-            * sqrt_norm_c_j_prime
+            tau_ij(curve_trajectory[j], degree, i, j, times)
+            * elastic_metric.f_transform(curve_trajectory[j])
             * gs.log(cap_c_j)
-            * (cap_c_j**a)
         )
 
-    return sqrt_norm_c_i_prime * gs.log(cap_c_i) * (cap_c_i**a) - j_sum
+    return elastic_metric.f_transform(curve_trajectory[i]) * gs.log(cap_c_i) - j_sum
 
 
 def r(i, curve_trajectory, a, n, degree):
-    """Calculate r_i."""
-    return i
+    """Calculate r_i.
+
+    IN PROGRESS.
+
+    need to change inputs to match dr_da.
+
+    This function is pretty much the same as dr_da except without the
+    log(C)'s.
+    """
+    n_times = len(curve_trajectory)
+    times = gs.arange(0, n_times, 1)
+
+    return times
 
 
 def mse_gradient(curve_trajectory, n, n_prime, degree, a):
@@ -126,11 +213,14 @@ def mse_gradient(curve_trajectory, n, n_prime, degree, a):
     QUESTION: do dr_da and r need to be dotted? not
     multiplied?
     """
+    b = 0.5
+    elastic_metric = ElasticMetric(a, b, ambient_manifold=R2)
+
     d_mse_sum = 0
 
     for i in range(n_prime):
-        d_mse_sum += dr_da(i, curve_trajectory, a, n, degree) * r(
-            i, curve_trajectory, a, n, degree
+        d_mse_sum += dr_da(i, curve_trajectory, elastic_metric, n, degree) * r(
+            i, curve_trajectory, elastic_metric, n, degree
         )
 
     return 2 * d_mse_sum
