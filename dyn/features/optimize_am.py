@@ -76,7 +76,7 @@ os.environ["GEOMSTATS_BACKEND"] = "pytorch"
 #     return np.sqrt(gs.linalg.norm(c_prime(curve)))
 
 
-def tau_jl(curve, j, degree_index, times):
+def tau_jl(j, n, degree_index, times):
     """Calculate tau_jl.
 
     Damn... might need to do some matrix multiplication.
@@ -107,10 +107,25 @@ def tau_jl(curve, j, degree_index, times):
     so we just have to calculate that, which essentially means
     we just have to calculate the X matrix, its transverse,
     and the inverse of those two matrices multiplied.
+
+    to save computation, could probably just make this a function
+    that returns the tau matrix, calculate once, save it, and
+    then call on it in the for loop
     """
+    X = np.empty([degree_index, n])
+
+    # unnecessary because (anything)^0 is 1.
+    # X[:,0]=1
+
+    # note: should probably make sure times starts at zero.
+    for i_time, time in enumerate(times):
+        for i_degree, degree in enumerate(degree_index):
+            X[i_time, i_degree] = time**degree
+
+    return X
 
 
-def tau_ij(curve, degree, i, j, times):
+def tau_ij(n, degree, i, j, times):
     """Calculate tau_ij.
 
     tau_ij is the sum of a bunch of tau_jl's.
@@ -121,7 +136,7 @@ def tau_ij(curve, degree, i, j, times):
     """
     tau_jl_sum = 0
     for degree_index in range(degree):
-        tau_jl_sum += tau_jl(curve, j, degree_index, times) * times[i] ** degree_index
+        tau_jl_sum += tau_jl(j, n, degree_index, times) * times[i] ** degree_index
 
     return tau_jl_sum
 
@@ -142,6 +157,10 @@ def capital_c(curve, elastic_metric):
     velocity = (n_sampling_points - 1) * (curve[..., 1:, :] - curve[..., :-1, :])
     polar_velocity = elastic_metric.cartesian_to_polar(velocity)
     # QUESTION: what are these dots?
+    # ellipsis -- google later. says the first dimension of the curve
+    # could be anything (could be no first dimension, or one, or 200)
+    # in docstring of geomstats this is used a lot to show that the funciton
+    # will work whether you pass one curve or 200 curves, etc.
     # speeds = polar_velocity[..., :, 0]
     args = polar_velocity[..., :, 1]
 
@@ -183,7 +202,7 @@ def dr_da(i, curve_trajectory, elastic_metric, n, degree):
         cap_c_j = capital_c(curve_trajectory[j], elastic_metric)
 
         j_sum += (
-            tau_ij(curve_trajectory[j], degree, i, j, times)
+            tau_ij(n, degree, i, j, times)
             * elastic_metric.f_transform(curve_trajectory[j])
             * gs.log(cap_c_j)
         )
@@ -191,12 +210,8 @@ def dr_da(i, curve_trajectory, elastic_metric, n, degree):
     return elastic_metric.f_transform(curve_trajectory[i]) * gs.log(cap_c_i) - j_sum
 
 
-def r(i, curve_trajectory, a, n, degree):
+def r(i, curve_trajectory, elastic_metric, n, degree):
     """Calculate r_i.
-
-    IN PROGRESS.
-
-    need to change inputs to match dr_da.
 
     This function is pretty much the same as dr_da except without the
     log(C)'s.
@@ -204,14 +219,24 @@ def r(i, curve_trajectory, a, n, degree):
     n_times = len(curve_trajectory)
     times = gs.arange(0, n_times, 1)
 
+    j_sum = 0
+    for j in range(n):
+
+        j_sum += tau_ij(n, degree, i, j, times) * elastic_metric.f_transform(
+            curve_trajectory[j]
+        )
+
+    return elastic_metric.f_transform(curve_trajectory[i]) - j_sum
+
     return times
 
 
 def mse_gradient(curve_trajectory, n, n_prime, degree, a):
     """Compute the derivative of the MSE function w.r.t. a.
 
-    QUESTION: do dr_da and r need to be dotted? not
-    multiplied?
+    I am, in fact computing the dot product here becuase i am multiplying
+    each component of dr_da with its corresponding component of r and
+
     """
     b = 0.5
     elastic_metric = ElasticMetric(a, b, ambient_manifold=R2)
@@ -255,7 +280,9 @@ def know_m_find_best_a(trajectory, degree):
     descent to find out which value of a minimizes the mean squared error
     (MSE) function.
 
-    QUESTION: should we be doing something to transform to curve space again?
+    IN PROGRESS
+
+    TO DO: calculate mse with given a.
     """
     init_a = 0.2
     learn_rate = 1
@@ -275,83 +302,20 @@ def find_best_am(trajectory):
     Then, choose the pair that minimizes root mean squared error.
     """
     ms = np.arange(6)
-    best_rmses = np.empty([len(ms)])
+    # best_rmses = np.empty([len(ms)])
     best_as = np.empty([len(ms)])
-    min_rmse = 1
-    best_am = np.empty([2])
+    steps = np.empty([len(ms)])
+    # min_rmse = 1
+    # best_am = np.empty([2])
 
     for i_m, m in enumerate(ms):
-        best_as[i_m], best_rmses[i_m] = know_m_find_best_a(trajectory, m)
+        steps[i_m], best_as[i_m] = know_m_find_best_a(trajectory, m)
         print(best_as[i_m])
-        if best_rmses[i_m] < min_rmse:
-            best_am[0] = best_as[i_m]
-            print(best_as[i_m])
-            best_am[1] = m
-
-    return best_am
 
 
-# def t_squared_bar(times):
-#     """Calculate the sum of the squared times."""
-#     return np.sum(np.square(times))
+#         if best_rmses[i_m] < min_rmse:
+#             best_am[0] = best_as[i_m]
+#             print(best_as[i_m])
+#             best_am[1] = m
 
-
-# def t_bar(times):
-#     """Compute t_bar from the times array."""
-#     return np.sum(times)
-
-
-# def tau(i, j, n):
-#     """Compute tau for the tau_tilda function."""
-#     times = gs.arange(0, n, 1)
-#     if j == 0:
-#         return (t_bar(times) ** 2 - t_bar(times) * times[i]) / (
-#             n * (t_squared_bar(times) - t_bar(times) ** 2)
-#         )
-#     elif j == 1:
-#         return -(t_bar(times) + times[i]) / (
-#             n ** (t_squared_bar(times) - t_bar(times) ** 2)
-#         )
-
-
-# def tau_tilda(curve, i_index, j_index, n):
-#     """Compute tau_tilda for the alpha function."""
-#     if i_index == j_index:
-#         # question: how to find the derivative of curve in gs
-#         return 1 - tau(
-#             i_index, j_index, n
-#         )  # multiplied by the square root of the norm of the
-#         # derivative of the curve
-#     else:
-#         return -tau(
-#             i_index, j_index, n
-#         )  # multiplied by the square root of the norm of the
-#         # derivative of the curve
-
-
-# def alpha(curve_trajectory, n, n_prime, j, j_prime):
-#     """Compute alpha for the MSE derivative."""
-#     alpha = 0
-#     for i in range(n_prime):
-#         # question: is log right here?
-#         alpha += (
-#             2
-#             * tau_tilda(curve_trajectory[i], i, j, n)
-#             * gs.log(C[i])
-#             * tau_tilda(curve_trajectory[i], j_prime, n)
-#         )
-
-#     return alpha
-
-
-# def mse_gradient(curve_trajectory, n, n_prime, a):
-#     """Compute the derivative of the MSE function w.r.t. a."""
-#     d_mse = 0
-#     for j in range(n):
-#         for j_prime in range(n):
-#             d_mse += (
-#                 alpha(curve_trajectory, n, n_prime, j, j_prime)
-#                 * (C[curve_trajectory[j]] * C[curve_trajectory[j_prime]]) ** a
-#             )
-
-#     return d_mse
+#     return best_am
