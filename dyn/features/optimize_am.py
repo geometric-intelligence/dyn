@@ -146,37 +146,31 @@ def capital_c(curve, elastic_metric):
 
     C is the derivative of the curve divided by the norm of the
     derivativeof the curve.
-    """
-    # question: how to compute derivative of curve...
-    # norm is gs.norm right? --yes
-    # we compute the derivative by taking difference
-    # between sampling points. example in f transform
-    # in geomstats
 
+    this function is modeled off of the f_transform code in geomstats.
+
+    we do calculations in polar coordinates because it is the best way to
+    take the exponential of a vector. see:
+    https://brilliant.org/wiki/polar-coordinates/
+
+    the "..." in the array splicing means that it can take any shape, but we take
+    the last two indices. Therefore, we could pass than one curve to this
+    function if we wanted.
+    """
     n_sampling_points = curve.shape[-2]
     velocity = (n_sampling_points - 1) * (curve[..., 1:, :] - curve[..., :-1, :])
     polar_velocity = elastic_metric.cartesian_to_polar(velocity)
-    # QUESTION: what are these dots?
-    # ellipsis -- google later. says the first dimension of the curve
-    # could be anything (could be no first dimension, or one, or 200)
-    # in docstring of geomstats this is used a lot to show that the funciton
-    # will work whether you pass one curve or 200 curves, etc.
-    # speeds = polar_velocity[..., :, 0]
+    speeds = polar_velocity[..., :, 0]
+    # the theta's in polar coordinates. this is what you multiply by to do exponentials.
     args = polar_velocity[..., :, 1]
 
-    # QUESTION: why do all these calculations in polar?
-    capital_c_polar = args * elastic_metric.a
-    # c_prime_norm_sqrt = gs.sqrt(speeds)
-    capital_c_cartesian = elastic_metric.polar_to_cartesian(capital_c_polar)
+    c_args = args * elastic_metric.a
+    # QUESTION: is this right? want this to be equal to 1. based on gs code.
+    c_norms = speeds**0
+    c_polar = gs.stack([c_norms, c_args], axis=-1)
+    c_cartesian = elastic_metric.polar_to_cartesian(c_polar)
 
-    #     QUESTION: why is args multiplied by the exponent instead of not...
-    #     f_args = args * self.a / (2 * self.b)
-    #     f_norms = 2 * self.b * gs.sqrt(speeds)
-    # QUESTION: what is this stack thing?
-    #     f_polar = gs.stack([f_norms, f_args], axis=-1)
-    #     f_cartesian = self.polar_to_cartesian(f_polar)
-
-    return capital_c_cartesian
+    return c_cartesian
 
 
 def dr_da(i, curve_trajectory, elastic_metric, n, degree):
@@ -207,6 +201,11 @@ def dr_da(i, curve_trajectory, elastic_metric, n, degree):
             * gs.log(cap_c_j)
         )
 
+    # this is a 2D array. perhaps this means that we actually did not do the dotting
+    # correctly in the mse derivative function.
+    # print((elastic_metric.f_transform(curve_trajectory[i])
+    # * gs.log(cap_c_i) - j_sum).shape)
+
     return elastic_metric.f_transform(curve_trajectory[i]) * gs.log(cap_c_i) - j_sum
 
 
@@ -228,15 +227,41 @@ def r(i, curve_trajectory, elastic_metric, n, degree):
 
     return elastic_metric.f_transform(curve_trajectory[i]) - j_sum
 
-    return times
-
 
 def mse_gradient(curve_trajectory, n, n_prime, degree, a):
     """Compute the derivative of the MSE function w.r.t. a.
 
-    I am, in fact computing the dot product here becuase i am multiplying
-    each component of dr_da with its corresponding component of r and
+    IN PROGRESS.
 
+    still need to dot the dr_da and r components.
+
+    remember that r is the difference between q_i real and q_i predicted.
+    q's are still curves, just in linear space. q_i is one curve.
+    therefore, q_i - q_i_predicted is the difference between curves.
+
+    why are we doing subtraction stuff instead of finding the distance
+    between two curves on the manifold of discrete curves? shouldnt we be
+    comparing curves on that manifold? how does finding the difference between
+    each of the points on the curves give us useful information?
+
+    However, if we do compare them in linear space, I'm guessing we would
+    want to dot all the rows of dr_da with the rows of r. That would give us
+    a 1D vector... which is not a scalar, like it should be.
+
+    I believe i must be having problems because maybe i don't know how
+    exactly to find the norm a 2D array. I only know how to find the norm
+    of a 1D array.
+
+
+    NOTE: we may actually have to re-derive things. i looked at the
+    numpy source code for getting the norm of a matrix, and they use
+    the Frobenius Norm. Since we are not dealing with vectors, i don't know if
+    it is valid to use our current formula to get the norm of them.
+    https://mathworld.wolfram.com/FrobeniusNorm.html
+
+    ALTERNATIVELY: there is another source that says that the norm
+    of a 2D vector is the same as the norm of that 2D vector, reshaped.
+    https://www.geeksforgeeks.org/find-a-matrix-or-vector-norm-using-numpy/
     """
     b = 0.5
     elastic_metric = ElasticMetric(a, b, ambient_manifold=R2)
@@ -244,9 +269,15 @@ def mse_gradient(curve_trajectory, n, n_prime, degree, a):
     d_mse_sum = 0
 
     for i in range(n_prime):
-        d_mse_sum += dr_da(i, curve_trajectory, elastic_metric, n, degree) * r(
-            i, curve_trajectory, elastic_metric, n, degree
-        )
+        dr_da_var = dr_da(i, curve_trajectory, elastic_metric, n, degree)
+        # dr_da_var_trans = np.transpose(dr_da_var)
+        r_var = r(i, curve_trajectory, elastic_metric, n, degree)
+
+        d_mse_sum += dr_da_var * r_var
+        print(dr_da_var.shape)
+        print(r_var.shape)
+
+    print(d_mse_sum.shape)
 
     return 2 * d_mse_sum
 
