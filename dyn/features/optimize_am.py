@@ -79,50 +79,20 @@ os.environ["GEOMSTATS_BACKEND"] = "pytorch"
 def tau_jl(j, n, degree_index, times):
     """Calculate tau_jl.
 
-    Damn... might need to do some matrix multiplication.
-    make a vector of betas.
-
-    then beta[0] = tau_j0
-    beta[1] = tau_j1
-    etc.
-
-    waiiiittt actually, looking at equation 12.
-    maybe better to take f out of dr_da equation becaues beta actually
-    includes q_i which is the f transform.
-
-    yes, so just have an entire function dedicated to calculating the
-    vector beta
-
-    so my goal is to find dr/da in terms of beta. I want to do this
-    becasue i am going to have to do the matrix multiplication anyway in
-    order to calculate these tau's.
-
-
-    ACTUALLY:
-    new idea: now, i think we are just going to calculate the tau matrix
-    we might be able to combine the tau_ij and the tau_jl functions into
-    one tau matrix.
-
-    no... ok, so tau_jl is the tau matrix ((X^T)X)^-1*X^T
-    so we just have to calculate that, which essentially means
-    we just have to calculate the X matrix, its transverse,
-    and the inverse of those two matrices multiplied.
-
-    to save computation, could probably just make this a function
-    that returns the tau matrix, calculate once, save it, and
-    then call on it in the for loop
+    this is the tau matrix. tau = (X^T*X)^-1*X^T
     """
     X = np.empty([degree_index, n])
-
-    # unnecessary because (anything)^0 is 1.
-    # X[:,0]=1
 
     # note: should probably make sure times starts at zero.
     for i_time, time in enumerate(times):
         for i_degree, degree in enumerate(degree_index):
             X[i_time, i_degree] = time**degree
 
-    return X
+    X_T = X.transpose()
+
+    tau = np.linalg.inv(X_T * X) * X_T
+
+    return tau[j, degree_index]
 
 
 def tau_ij(n, degree, i, j, times):
@@ -170,6 +140,9 @@ def capital_c(curve, elastic_metric):
     c_polar = gs.stack([c_norms, c_args], axis=-1)
     c_cartesian = elastic_metric.polar_to_cartesian(c_polar)
 
+    # these numbers are all fine.
+    # print(c_cartesian)
+
     return c_cartesian
 
 
@@ -183,6 +156,13 @@ def dr_da(i, curve_trajectory, elastic_metric, n, degree):
 
     returns:
     dr_da: the derivative of r_i w.r.t. a.
+
+    IN PROGRESS:
+
+    PROBLEM: capital c sometimes has negative values. this is
+    giving us problems when we compute the log of cap c
+    because the log of a negative number is nan. Need
+    to figure out how i can get around this.
     """
     n_times = len(curve_trajectory)
     times = gs.arange(0, n_times, 1)
@@ -195,18 +175,29 @@ def dr_da(i, curve_trajectory, elastic_metric, n, degree):
         # sqrt_norm_c_j_prime = sqrt_norm_c_prime(curve_trajectory[j])
         cap_c_j = capital_c(curve_trajectory[j], elastic_metric)
 
-        j_sum += (
-            tau_ij(n, degree, i, j, times)
-            * elastic_metric.f_transform(curve_trajectory[j])
-            * gs.log(cap_c_j)
+        #         if j== 0:
+        #             #initialize j_sum
+        #             j_sum = (
+        #                 tau_ij(n, degree, i, j, times)
+        #                 * elastic_metric.f_transform(curve_trajectory[j])
+        #                 * np..log(cap_c_j)
+        #             )
+        # we are getting an error because we are trying to take the log of a neg. #.
+        print(cap_c_j)
+        print(np.log(cap_c_j))
+        j_sum += tau_ij(n, degree, i, j, times) * np.multiply(
+            elastic_metric.f_transform(curve_trajectory[j]), np.log(cap_c_j)
         )
+    # print(j_sum.shape)
+    #     print(np.multiply(
+    #                 elastic_metric.f_transform(curve_trajectory[j]),
+    #                 np.log(cap_c_j)
+    #             ))
 
-    # this is a 2D array. perhaps this means that we actually did not do the dotting
-    # correctly in the mse derivative function.
-    # print((elastic_metric.f_transform(curve_trajectory[i])
-    # * gs.log(cap_c_i) - j_sum).shape)
-
-    return elastic_metric.f_transform(curve_trajectory[i]) * gs.log(cap_c_i) - j_sum
+    return (
+        np.multiply(elastic_metric.f_transform(curve_trajectory[i]), np.log(cap_c_i))
+        - j_sum
+    )
 
 
 def r(i, curve_trajectory, elastic_metric, n, degree):
@@ -231,37 +222,18 @@ def r(i, curve_trajectory, elastic_metric, n, degree):
 def mse_gradient(curve_trajectory, n, n_prime, degree, a):
     """Compute the derivative of the MSE function w.r.t. a.
 
-    IN PROGRESS.
+    put more descriptive caption later.
 
-    still need to dot the dr_da and r components.
+    essentially, mse = norm2(r_i)
+    but r_i = q_i-qhat_i, which are both matrices.
+    therefore, to calculate the norm of a matrix, we have to use
+    the Frobenius Norm, which essentially sums the squared absolute
+    value of every element.
+    But, when we take the derivative of mse w.r.t. a, that means
+    we are taking the derivative of an absolute value.
+    remember that the derivative of an abs value is equal to...
 
-    remember that r is the difference between q_i real and q_i predicted.
-    q's are still curves, just in linear space. q_i is one curve.
-    therefore, q_i - q_i_predicted is the difference between curves.
-
-    why are we doing subtraction stuff instead of finding the distance
-    between two curves on the manifold of discrete curves? shouldnt we be
-    comparing curves on that manifold? how does finding the difference between
-    each of the points on the curves give us useful information?
-
-    However, if we do compare them in linear space, I'm guessing we would
-    want to dot all the rows of dr_da with the rows of r. That would give us
-    a 1D vector... which is not a scalar, like it should be.
-
-    I believe i must be having problems because maybe i don't know how
-    exactly to find the norm a 2D array. I only know how to find the norm
-    of a 1D array.
-
-
-    NOTE: we may actually have to re-derive things. i looked at the
-    numpy source code for getting the norm of a matrix, and they use
-    the Frobenius Norm. Since we are not dealing with vectors, i don't know if
-    it is valid to use our current formula to get the norm of them.
-    https://mathworld.wolfram.com/FrobeniusNorm.html
-
-    ALTERNATIVELY: there is another source that says that the norm
-    of a 2D vector is the same as the norm of that 2D vector, reshaped.
-    https://www.geeksforgeeks.org/find-a-matrix-or-vector-norm-using-numpy/
+    later, put all the math that i wrote on ipad to give better caption.
     """
     b = 0.5
     elastic_metric = ElasticMetric(a, b, ambient_manifold=R2)
@@ -273,11 +245,19 @@ def mse_gradient(curve_trajectory, n, n_prime, degree, a):
         # dr_da_var_trans = np.transpose(dr_da_var)
         r_var = r(i, curve_trajectory, elastic_metric, n, degree)
 
-        d_mse_sum += dr_da_var * r_var
-        print(dr_da_var.shape)
-        print(r_var.shape)
+        rows, cols = dr_da_var.shape
+        # print(rows, cols)
 
-    print(d_mse_sum.shape)
+        for row in range(rows):
+            for col in range(cols):
+                # dr_da is returning nan. the others are fine.
+                # it also seems that only every other (i.e. 1,3, etc in cols) is
+                # bugging.
+                # print(dr_da_var[row][col],r_var[row][col],np.abs(r_var[row][col]))
+                d_mse_sum += (
+                    dr_da_var[row][col] * r_var[row][col] ** 2 / np.abs(r_var[row][col])
+                )
+        # print(d_mse_sum)
 
     return 2 * d_mse_sum
 
