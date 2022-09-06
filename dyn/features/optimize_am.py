@@ -80,14 +80,24 @@ def tau_jl(j, n, degree_index, times):
     """Calculate tau_jl.
 
     this is the tau matrix. tau = (X^T*X)^-1*X^T
+
+    QUESTION: getting an error here because it is saying that
+    the matrix does not have an inverse... because it is
+    singular... what should i do??
+
+    POTENTIAL SOLUTION: don't use matrices. just do equivalent
+    math to get the desired component, that does not involve
+    taking matrix inverses.
     """
-    X = np.empty([degree_index, n])
+    # degree_index +1 so that it will have correct dimensions
+    X = np.empty([degree_index + 1, n])
 
     # note: should probably make sure times starts at zero.
     for i_time, time in enumerate(times):
-        for i_degree, degree in enumerate(degree_index):
-            X[i_time, i_degree] = time**degree
+        for degree in range(degree_index):
+            X[degree][i_time] = time**degree
 
+    print(X)
     X_T = X.transpose()
 
     tau = np.linalg.inv(X_T * X) * X_T
@@ -129,7 +139,12 @@ def capital_c(curve, elastic_metric):
     """
     n_sampling_points = curve.shape[-2]
     velocity = (n_sampling_points - 1) * (curve[..., 1:, :] - curve[..., :-1, :])
+    # wanted to print to see if only the right column was negative.
+    # both columns are a mix of positive and neg.
+    # print(velocity)
     polar_velocity = elastic_metric.cartesian_to_polar(velocity)
+    # here, is where all the numbers in right column are negative.
+    # print(polar_velocity)
     speeds = polar_velocity[..., :, 0]
     # the theta's in polar coordinates. this is what you multiply by to do exponentials.
     args = polar_velocity[..., :, 1]
@@ -143,7 +158,7 @@ def capital_c(curve, elastic_metric):
     # these numbers are all fine.
     # print(c_cartesian)
 
-    return c_cartesian
+    return np.abs(c_cartesian)
 
 
 def dr_da(i, curve_trajectory, elastic_metric, n, degree):
@@ -163,6 +178,8 @@ def dr_da(i, curve_trajectory, elastic_metric, n, degree):
     giving us problems when we compute the log of cap c
     because the log of a negative number is nan. Need
     to figure out how i can get around this.
+
+    note: np.log is equivalent to ln.
     """
     n_times = len(curve_trajectory)
     times = gs.arange(0, n_times, 1)
@@ -183,8 +200,8 @@ def dr_da(i, curve_trajectory, elastic_metric, n, degree):
         #                 * np..log(cap_c_j)
         #             )
         # we are getting an error because we are trying to take the log of a neg. #.
-        print(cap_c_j)
-        print(np.log(cap_c_j))
+        # print(cap_c_j)
+        # print(np.log(cap_c_j))
         j_sum += tau_ij(n, degree, i, j, times) * np.multiply(
             elastic_metric.f_transform(curve_trajectory[j]), np.log(cap_c_j)
         )
@@ -269,6 +286,8 @@ def gradient_descent(
 
     structure inspiration source:
     https://towardsdatascience.com/gradient-descent-algorithm-a-deep-dive-cf04e8115f21
+
+    sample function also returns steps. we could do that if we want to debug.
     """
     steps = [init_a]  # history tracking
     a = init_a
@@ -281,7 +300,7 @@ def gradient_descent(
         a = a - diff
         steps.append(a)  # history tracing
 
-    return steps, a
+    return a
 
 
 def know_m_find_best_a(trajectory, degree):
@@ -315,12 +334,12 @@ def find_best_am(trajectory):
     ms = np.arange(6)
     # best_rmses = np.empty([len(ms)])
     best_as = np.empty([len(ms)])
-    steps = np.empty([len(ms)])
+    # steps = np.empty([len(ms)])
     # min_rmse = 1
     # best_am = np.empty([2])
 
     for i_m, m in enumerate(ms):
-        steps[i_m], best_as[i_m] = know_m_find_best_a(trajectory, m)
+        best_as[i_m] = know_m_find_best_a(trajectory, m)
         print(best_as[i_m])
 
 
