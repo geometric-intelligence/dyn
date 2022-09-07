@@ -76,7 +76,7 @@ os.environ["GEOMSTATS_BACKEND"] = "pytorch"
 #     return np.sqrt(gs.linalg.norm(c_prime(curve)))
 
 
-def tau_jl(j, n, degree_index, times):
+def tau_jl(j, n, degree_index):
     """Calculate tau_jl.
 
     this is the tau matrix. tau = (X^T*X)^-1*X^T
@@ -90,19 +90,26 @@ def tau_jl(j, n, degree_index, times):
     taking matrix inverses.
     """
     # degree_index +1 so that it will have correct dimensions
-    X = np.empty([degree_index + 1, n])
+    # rows are data points, columns are degrees
+    X = np.empty([n, degree_index + 1])
+
+    times = gs.arange(0, n, 1)
 
     # note: should probably make sure times starts at zero.
     for i_time, time in enumerate(times):
-        for degree in range(degree_index):
-            X[degree][i_time] = time**degree
+        for degree in range(degree_index + 1):
+            X[i_time][degree] = time**degree
 
-    print(X)
+    # print(X)
     X_T = X.transpose()
 
-    tau = np.linalg.inv(X_T * X) * X_T
+    tau = np.linalg.inv(X_T @ X) @ X_T  # @ is matrix multiplication
 
-    return tau[j, degree_index]
+    print(tau.shape)
+
+    # in tau, the rows are the degrees, and the n's are the columns.
+    # this is different than X.
+    return tau[degree_index, j]
 
 
 def tau_ij(n, degree, i, j, times):
@@ -116,7 +123,7 @@ def tau_ij(n, degree, i, j, times):
     """
     tau_jl_sum = 0
     for degree_index in range(degree):
-        tau_jl_sum += tau_jl(j, n, degree_index, times) * times[i] ** degree_index
+        tau_jl_sum += tau_jl(j, n, degree_index) * times[i] ** degree_index
 
     return tau_jl_sum
 
@@ -158,7 +165,7 @@ def capital_c(curve, elastic_metric):
     # these numbers are all fine.
     # print(c_cartesian)
 
-    return np.abs(c_cartesian)
+    return c_cartesian
 
 
 def dr_da(i, curve_trajectory, elastic_metric, n, degree):
@@ -257,6 +264,7 @@ def mse_gradient(curve_trajectory, n, n_prime, degree, a):
 
     d_mse_sum = 0
 
+    # TO DO: change this so that n_prime times do not start at zero.
     for i in range(n_prime):
         dr_da_var = dr_da(i, curve_trajectory, elastic_metric, n, degree)
         # dr_da_var_trans = np.transpose(dr_da_var)
@@ -271,9 +279,7 @@ def mse_gradient(curve_trajectory, n, n_prime, degree, a):
                 # it also seems that only every other (i.e. 1,3, etc in cols) is
                 # bugging.
                 # print(dr_da_var[row][col],r_var[row][col],np.abs(r_var[row][col]))
-                d_mse_sum += (
-                    dr_da_var[row][col] * r_var[row][col] ** 2 / np.abs(r_var[row][col])
-                )
+                d_mse_sum += dr_da_var[row][col] * r_var[row][col]
         # print(d_mse_sum)
 
     return 2 * d_mse_sum
@@ -331,7 +337,8 @@ def find_best_am(trajectory):
     Use a grid search on m and a gradient search on a to find the best pairs of (m,a).
     Then, choose the pair that minimizes root mean squared error.
     """
-    ms = np.arange(6)
+    # want to start with degree of 1 becuase that is a line, which is a geodesic
+    ms = np.arange(1, 6)
     # best_rmses = np.empty([len(ms)])
     best_as = np.empty([len(ms)])
     # steps = np.empty([len(ms)])
