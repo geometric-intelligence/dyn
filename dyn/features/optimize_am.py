@@ -105,8 +105,6 @@ def tau_jl(j, n, degree_index):
 
     tau = np.linalg.inv(X_T @ X) @ X_T  # @ is matrix multiplication
 
-    print(tau.shape)
-
     # in tau, the rows are the degrees, and the n's are the columns.
     # this is different than X.
     return tau[degree_index, j]
@@ -128,8 +126,8 @@ def tau_ij(n, degree, i, j, times):
     return tau_jl_sum
 
 
-def capital_c(curve, elastic_metric):
-    """Compute capital c.
+def derivative_curve_exp_a(curve, elastic_metric):
+    """Compute the derivative with respect to a of C^a.
 
     C is the derivative of the curve divided by the norm of the
     derivativeof the curve.
@@ -146,26 +144,57 @@ def capital_c(curve, elastic_metric):
     """
     n_sampling_points = curve.shape[-2]
     velocity = (n_sampling_points - 1) * (curve[..., 1:, :] - curve[..., :-1, :])
-    # wanted to print to see if only the right column was negative.
-    # both columns are a mix of positive and neg.
-    # print(velocity)
     polar_velocity = elastic_metric.cartesian_to_polar(velocity)
-    # here, is where all the numbers in right column are negative.
-    # print(polar_velocity)
     speeds = polar_velocity[..., :, 0]
-    # the theta's in polar coordinates. this is what you multiply by to do exponentials.
     args = polar_velocity[..., :, 1]
 
-    c_args = args * elastic_metric.a
-    # QUESTION: is this right? want this to be equal to 1. based on gs code.
-    c_norms = speeds**0
-    c_polar = gs.stack([c_norms, c_args], axis=-1)
-    c_cartesian = elastic_metric.polar_to_cartesian(c_polar)
+    der_args = args * elastic_metric.a + np.pi / 2
+    der_norms = args * gs.sqrt(speeds)
+    der_polar = gs.stack([der_norms, der_args], axis=-1)
+    der_cartesian = elastic_metric.polar_to_cartesian(der_polar)
 
-    # these numbers are all fine.
-    # print(c_cartesian)
+    return der_cartesian
 
-    return c_cartesian
+
+# def capital_c(curve, elastic_metric):
+#     """Compute capital c.
+
+#     C is the derivative of the curve divided by the norm of the
+#     derivativeof the curve.
+
+#     this function is modeled off of the f_transform code in geomstats.
+
+#     we do calculations in polar coordinates because it is the best way to
+#     take the exponential of a vector. see:
+#     https://brilliant.org/wiki/polar-coordinates/
+
+#     the "..." in the array splicing means that it can take any shape, but we take
+#     the last two indices. Therefore, we could pass than one curve to this
+#     function if we wanted.
+#     """
+#     n_sampling_points = curve.shape[-2]
+#     velocity = (n_sampling_points - 1) * (curve[..., 1:, :] - curve[..., :-1, :])
+#     # wanted to print to see if only the right column was negative.
+#     # both columns are a mix of positive and neg.
+#     # print(velocity)
+#     polar_velocity = elastic_metric.cartesian_to_polar(velocity)
+#     # here, is where all the numbers in right column are negative.
+#     # print(polar_velocity)
+#     speeds = polar_velocity[..., :, 0]
+#     # the theta's in polar coordinates. this is what you multiply by to do
+#  exponentials.
+#     args = polar_velocity[..., :, 1]
+
+#     c_args = args * elastic_metric.a
+#     # QUESTION: is this right? want this to be equal to 1. based on gs code.
+#     c_norms = speeds**0
+#     c_polar = gs.stack([c_norms, c_args], axis=-1)
+#     c_cartesian = elastic_metric.polar_to_cartesian(c_polar)
+
+#     # these numbers are all fine.
+#     # print(c_cartesian)
+
+#     return c_cartesian
 
 
 def dr_da(i, curve_trajectory, elastic_metric, n, degree):
@@ -191,37 +220,14 @@ def dr_da(i, curve_trajectory, elastic_metric, n, degree):
     n_times = len(curve_trajectory)
     times = gs.arange(0, n_times, 1)
 
-    # sqrt_norm_c_i_prime = sqrt_norm_c_prime(curve_trajectory[i])
-    cap_c_i = capital_c(curve_trajectory[i], elastic_metric)
-
-    j_sum = 0
+    tau_sum = 0
     for j in range(n):
-        # sqrt_norm_c_j_prime = sqrt_norm_c_prime(curve_trajectory[j])
-        cap_c_j = capital_c(curve_trajectory[j], elastic_metric)
 
-        #         if j== 0:
-        #             #initialize j_sum
-        #             j_sum = (
-        #                 tau_ij(n, degree, i, j, times)
-        #                 * elastic_metric.f_transform(curve_trajectory[j])
-        #                 * np..log(cap_c_j)
-        #             )
-        # we are getting an error because we are trying to take the log of a neg. #.
-        # print(cap_c_j)
-        # print(np.log(cap_c_j))
-        j_sum += tau_ij(n, degree, i, j, times) * np.multiply(
-            elastic_metric.f_transform(curve_trajectory[j]), np.log(cap_c_j)
+        tau_sum += tau_ij(n, degree, i, j, times) * derivative_curve_exp_a(
+            curve_trajectory[j], elastic_metric
         )
-    # print(j_sum.shape)
-    #     print(np.multiply(
-    #                 elastic_metric.f_transform(curve_trajectory[j]),
-    #                 np.log(cap_c_j)
-    #             ))
 
-    return (
-        np.multiply(elastic_metric.f_transform(curve_trajectory[i]), np.log(cap_c_i))
-        - j_sum
-    )
+    return derivative_curve_exp_a(curve_trajectory[i], elastic_metric) - tau_sum
 
 
 def r(i, curve_trajectory, elastic_metric, n, degree):
@@ -248,6 +254,9 @@ def mse_gradient(curve_trajectory, n, n_prime, degree, a):
 
     put more descriptive caption later.
 
+
+    will have to change this part...
+
     essentially, mse = norm2(r_i)
     but r_i = q_i-qhat_i, which are both matrices.
     therefore, to calculate the norm of a matrix, we have to use
@@ -258,9 +267,21 @@ def mse_gradient(curve_trajectory, n, n_prime, degree, a):
     remember that the derivative of an abs value is equal to...
 
     later, put all the math that i wrote on ipad to give better caption.
+
+    ... end of part i need to change
+
+    we must multiply each element by (1/the number of sampling points -1)
+    because we are
+    performing a riemannian integral sum of the norm of r_i(s)'s.
+    where i is the sampling point, and s is the parameter that
+    parametrizes all curves and ranges from 0 to 1.
+    the number of sampling points reduces by 1 because we are operating
+    in q space.
     """
     b = 0.5
     elastic_metric = ElasticMetric(a, b, ambient_manifold=R2)
+
+    n_sampling_points = len(curve_trajectory[0][:, 0])
 
     d_mse_sum = 0
 
@@ -279,7 +300,9 @@ def mse_gradient(curve_trajectory, n, n_prime, degree, a):
                 # it also seems that only every other (i.e. 1,3, etc in cols) is
                 # bugging.
                 # print(dr_da_var[row][col],r_var[row][col],np.abs(r_var[row][col]))
-                d_mse_sum += dr_da_var[row][col] * r_var[row][col]
+                d_mse_sum += (
+                    dr_da_var[row][col] * r_var[row][col] / (n_sampling_points - 1)
+                )
         # print(d_mse_sum)
 
     return 2 * d_mse_sum
@@ -309,7 +332,7 @@ def gradient_descent(
     return a
 
 
-def know_m_find_best_a(trajectory, degree):
+def know_m_find_best_a(trajectory, degree, n, n_prime, init_a):
     """Use a gradient search to find best a, for a given m.
 
     This function takes a trajectory and a degree and then uses gradient
@@ -320,18 +343,39 @@ def know_m_find_best_a(trajectory, degree):
 
     TO DO: calculate mse with given a.
     """
-    init_a = 0.2
     learn_rate = 1
     max_iter = 100
-    n = 10
-    n_prime = 5
     tol = 0.01
     return gradient_descent(
         init_a, learn_rate, max_iter, trajectory, n, n_prime, degree, tol
     )
 
 
-def find_best_am(trajectory):
+def compute_rmse(curve_trajectory, n, n_prime, degree, a):
+    """Compute the root mean squared error with the given parameters."""
+    b = 0.5
+    elastic_metric = ElasticMetric(a, b, ambient_manifold=R2)
+
+    n_sampling_points = len(curve_trajectory[0][:, 0])
+
+    d_mse_sum = 0
+
+    # TO DO: change this so that n_prime times do not start at zero.
+    # however, might get other indexing errors from this
+    for i in range(n_prime):
+        dr_da_var = dr_da(i, curve_trajectory, elastic_metric, n, degree)
+        r_var = r(i, curve_trajectory, elastic_metric, n, degree)
+
+        rows, cols = dr_da_var.shape
+
+        for row in range(rows):
+            for col in range(cols):
+                d_mse_sum += r_var[row][col] * r_var[row][col] / (n_sampling_points - 1)
+
+    return d_mse_sum
+
+
+def find_best_am(curve_trajectory):
     """For a given geodesic, find the (m,a) pair that minimnizes rmse.
 
     Use a grid search on m and a gradient search on a to find the best pairs of (m,a).
@@ -339,15 +383,36 @@ def find_best_am(trajectory):
     """
     # want to start with degree of 1 becuase that is a line, which is a geodesic
     ms = np.arange(1, 6)
-    # best_rmses = np.empty([len(ms)])
+    best_rmses = np.empty([len(ms)])
     best_as = np.empty([len(ms)])
     # steps = np.empty([len(ms)])
     # min_rmse = 1
     # best_am = np.empty([2])
 
-    for i_m, m in enumerate(ms):
-        best_as[i_m] = know_m_find_best_a(trajectory, m)
-        print(best_as[i_m])
+    n = 10
+    n_prime = 5
+    init_a = 0.2
+
+    for i_m, degree in enumerate(ms):
+        best_as[i_m] = know_m_find_best_a(curve_trajectory, degree, n, n_prime, init_a)
+        best_rmses[i_m] = compute_rmse(
+            curve_trajectory, n, n_prime, degree, best_as[i_m]
+        )
+        print(
+            "best a: "
+            + str(best_as[i_m])
+            + " best m: "
+            + str(degree)
+            + " rmse: "
+            + str(best_rmses[i_m])
+        )
+
+    best_am = [
+        best_as[best_rmses == max(best_rmses)],
+        ms[best_rmses == max(best_rmses)],
+    ]
+
+    print(best_am)
 
 
 #         if best_rmses[i_m] < min_rmse:
