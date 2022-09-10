@@ -471,7 +471,7 @@ def r_squared(curve_trajectory, n_train, n_val, degree, a):
     fit_variation = mse(curve_trajectory, elastic_metric, n_train, n_val, degree, a)
     total_variation = var(curve_trajectory, elastic_metric, n_val, a)
 
-    return fit_variation / total_variation
+    return 1 - fit_variation / total_variation
 
 
 def know_m_find_best_a(trajectory, degree, n, n_prime, init_a):
@@ -481,7 +481,7 @@ def know_m_find_best_a(trajectory, degree, n, n_prime, init_a):
     descent to find out which value of a minimizes the mean squared error
     (MSE) function.
     """
-    learn_rate = 1
+    learn_rate = 0.1
     max_iter = 100
     tol = 0.01
     return gradient_descent(
@@ -497,11 +497,9 @@ def find_best_am(curve_trajectory, init_a=0.2, n_train=10, n_val=5):
     """
     # want to start with degree of 1 becuase that is a line, which is a geodesic
     ms = np.arange(1, 6)
-    best_rmses = np.empty([len(ms)])
+    ms = np.array(ms)
+    r2 = np.empty([len(ms)])
     best_as = np.empty([len(ms)])
-    # steps = np.empty([len(ms)])
-    # min_rmse = 1
-    # best_am = np.empty([2])
 
     n = n_train
     n_prime = n_val
@@ -509,27 +507,25 @@ def find_best_am(curve_trajectory, init_a=0.2, n_train=10, n_val=5):
     for i_m, degree in enumerate(ms):
         best_as[i_m] = know_m_find_best_a(curve_trajectory, degree, n, n_prime, init_a)
         # TO DO: replace compute_rmse with new r_squared function.
-        best_rmses[i_m] = r_squared(curve_trajectory, n, n_prime, degree, best_as[i_m])
+        r2[i_m] = r_squared(curve_trajectory, n, n_prime, degree, best_as[i_m])
         print(
             "degree: "
             + str(degree)
             + "; best a: "
             + str(best_as[i_m])
-            + ";rmse: "
-            + str(best_rmses[i_m])
+            + ";r2: "
+            + str(r2[i_m])
         )
 
-    best_am = [
-        best_as[best_rmses == min(best_rmses)],
-        ms[best_rmses == min(best_rmses)],
-    ]
+    # r2 is the best when it is closest to +1.
+    min_diff = 100
+    i_best_r2 = 100
+    for i_r2 in range(len(r2)):
+        diff = r2[i_r2] - 1
+        if abs(diff) < min_diff:
+            min_diff = abs(r2[i_r2] - 1)
+            i_best_r2 = i_r2
 
-    print(best_am)
+    best_am = gs.stack([best_as[i_best_r2], ms[i_best_r2]], axis=-1)
 
-
-#         if best_rmses[i_m] < min_rmse:
-#             best_am[0] = best_as[i_m]
-#             print(best_as[i_m])
-#             best_am[1] = m
-
-#     return best_am
+    print("best_a: " + str(best_am[0]) + " best_m: " + str(best_am[1]))
