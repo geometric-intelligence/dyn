@@ -8,9 +8,8 @@ import numpy as np
 import torch
 
 # load discrete curves and R2 manifolds
-from geomstats.geometry.discrete_curves import (
+from geomstats.geometry.discrete_curves import (  # ClosedDiscreteCurves,
     R2,
-    ClosedDiscreteCurves,
     DiscreteCurves,
     ElasticMetric,
 )
@@ -64,7 +63,7 @@ def ftrans_plot_predictions(geodesic, a=1, b=1, split=True):
     """
     # NEW, FOR CLOSED CURVES:
     # R1 = Euclidean(dim=1)
-    CLOSED_CURVES_SPACE = ClosedDiscreteCurves(R2)
+    # CLOSED_CURVES_SPACE = ClosedDiscreteCurves(R2)
     # CURVES_SPACE = DiscreteCurves(R2)
 
     # n_geodesics = 1
@@ -110,12 +109,19 @@ def ftrans_plot_predictions(geodesic, a=1, b=1, split=True):
     recentered_curves = centered_predictions(predicted_curves, n_points, n_times)
 
     # NEW
-    closed_recentered_curves = CLOSED_CURVES_SPACE.projection(recentered_curves)
+    # closed_recentered_curves = CLOSED_CURVES_SPACE.projection(recentered_curves)
+
+    #     if split:
+    #         half_set_plot_comparison(closed_recentered_curves, geodesic,
+    #                 n_times, a, b)
+    #     else:
+    #         full_set_plot_comparison(closed_recentered_curves, geodesic,
+    #                 n_times, a, b)
 
     if split:
-        half_set_plot_comparison(closed_recentered_curves, geodesic, n_times, a, b)
+        half_set_plot_comparison(recentered_curves, geodesic, n_times, a, b)
     else:
-        full_set_plot_comparison(closed_recentered_curves, geodesic, n_times, a, b)
+        full_set_plot_comparison(recentered_curves, geodesic, n_times, a, b)
 
 
 def full_set_linear_regression(q_vector, n_times, q_times_1d, n_points):
@@ -516,10 +522,13 @@ def ftrans_plot_predictions_nongeodesic(geodesic, a, b, degree=2, split=True):
     a future optimize_ab_polynomial) to fully fit functions In the future, we can
     also combine all of these functions so that we can have one big function that
     has a bunch of options like type = "linear", "polynomial" etc.
+
+    Note: this function throws an SRV error when we project curves into closed
+    space
     """
     # NEW, FOR CLOSED CURVES:
     # R1 = Euclidean(dim=1)
-    CLOSED_CURVES_SPACE = ClosedDiscreteCurves(R2)
+    # CLOSED_CURVES_SPACE = ClosedDiscreteCurves(R2)
     # CURVES_SPACE = DiscreteCurves(R2)
 
     # n_geodesics = 1
@@ -546,7 +555,7 @@ def ftrans_plot_predictions_nongeodesic(geodesic, a, b, degree=2, split=True):
     if split:
         # ToDo: don't pass n_times. instead, compute n_times from len(q_times_1d).
         # n_points is second dimension of q_vector divided by 2 plus 1.
-        q_tensor_predict, starting_point_array, rmse = polynomial_regression(
+        q_tensor_predict, starting_point_array, rmse = half_set_polynomial_regression(
             q_vector, n_times, q_times_1d, n_points, degree
         )
 
@@ -566,12 +575,19 @@ def ftrans_plot_predictions_nongeodesic(geodesic, a, b, degree=2, split=True):
 
     recentered_curves = centered_predictions(predicted_curves, n_points, n_times)
 
-    closed_recentered_curves = CLOSED_CURVES_SPACE.projection(recentered_curves)
+    #     closed_recentered_curves = CLOSED_CURVES_SPACE.projection(recentered_curves)
+
+    #     if split:
+    #         half_set_plot_comparison(closed_recentered_curves, geodesic,
+    #                 n_times, a, b)
+    #     else:
+    #         full_set_plot_comparison(closed_recentered_curves, geodesic,
+    #                 n_times, a, b)
 
     if split:
-        half_set_plot_comparison(closed_recentered_curves, geodesic, n_times, a, b)
+        half_set_plot_comparison(recentered_curves, geodesic, n_times, a, b)
     else:
-        full_set_plot_comparison(closed_recentered_curves, geodesic, n_times, a, b)
+        full_set_plot_comparison(recentered_curves, geodesic, n_times, a, b)
 
 
 def polynomial_regression(q_vector, n_times, q_times_1d, n_points, deg):
@@ -628,23 +644,29 @@ def half_set_polynomial_regression(q_vector, n_times, q_times_1d, n_points, deg)
 
     # splitting the vector dataset
     q_vector_train = q_vector[:half_n_times]
-    # q_vector_test = q_vector[half_n_times:]
+    q_vector_test = q_vector[half_n_times:]
 
     q_times_train = np.reshape(q_times_1d_train, (half_n_times, 1))
     q_times_test = np.reshape(q_times_1d_test, (n_times - half_n_times, 1))
 
-    x = q_times_train
-    y = q_vector_train
+    x_train = q_times_train
+    y_train = q_vector_train
+
+    x_test = q_times_test
+    y_test = q_vector_test
 
     polynomial_features = PolynomialFeatures(degree=deg)
-    x_poly = polynomial_features.fit_transform(x)
+    x_poly_train = polynomial_features.fit_transform(x_train)
+
+    polynomial_features = PolynomialFeatures(degree=deg)
+    x_poly_test = polynomial_features.fit_transform(x_test)
 
     model = LinearRegression()
-    model.fit(x_poly, y)
-    y_poly_pred = model.predict(q_times_test)
+    model.fit(x_poly_train, y_train)
+    y_poly_pred = model.predict(x_poly_test)
 
-    rmse = np.sqrt(mean_squared_error(y, y_poly_pred))
-    r2 = r2_score(y, y_poly_pred)
+    rmse = np.sqrt(mean_squared_error(y_test, y_poly_pred))
+    r2 = r2_score(y_test, y_poly_pred)
     print(rmse)
     print(r2)
 
