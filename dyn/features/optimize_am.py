@@ -472,6 +472,43 @@ def gradient_descent(
     return a
 
 
+# def gradient_ascent(
+#     init_a,
+#     learn_rate,
+#     max_iter,
+#     curve_trajectory,
+#     times_train,
+#     times_val,
+#     degree,
+#     tol=0.01,
+# ):
+#     """Calculate maximum value of r2 using gradient ascent.
+
+#     structure inspiration source:
+#     https://towardsdatascience.com/gradient-descent-algorithm-a-deep-dive-cf04e8115f21
+
+#     sample function also returns steps. we could do that if we want to debug.
+#     """
+#     steps = [init_a]  # history tracking
+#     a = init_a
+
+#     for _ in range(max_iter):
+#         if a >= 0:
+#             # gradient must be a function of a.
+
+#             diff = learn_rate * r_squared_gradient(
+#                 curve_trajectory, times_train, times_val, degree, a
+#             )
+#             if np.abs(diff) < tol:
+#                 break
+#             if a + diff < 0:
+#                 break
+#             a = a + diff
+#             steps.append(a)  # history tracing
+
+#     return a
+
+
 def r_squared(curve_trajectory, times_train, times_val, degree, a):
     """Compute r squared."""
     b = 0.5
@@ -485,14 +522,13 @@ def r_squared(curve_trajectory, times_train, times_val, degree, a):
     return 1 - fit_variation / total_variation
 
 
-def know_m_find_best_a(trajectory, degree, times_train, times_val, init_a):
+def know_m_find_best_a(trajectory, degree, times_train, times_val, init_a, learn_rate):
     """Use a gradient search to find best a, for a given m.
 
     This function takes a trajectory and a degree and then uses gradient
     descent to find out which value of a minimizes the mean squared error
     (MSE) function.
     """
-    learn_rate = 0.1
     max_iter = 100
     tol = 0.01
     return gradient_descent(
@@ -500,7 +536,7 @@ def know_m_find_best_a(trajectory, degree, times_train, times_val, init_a):
     )
 
 
-def find_best_am(curve_trajectory, init_a=0.2, n_train=10, n_val=10):
+def find_best_am(curve_trajectory, init_a=0.2, n_train=10, n_val=10, learn_rate=0.1):
     """For a given geodesic, find the (m,a) pair that minimnizes rmse.
 
     Use a grid search on m and a gradient search on a to find the best pairs of (m,a).
@@ -525,7 +561,7 @@ def find_best_am(curve_trajectory, init_a=0.2, n_train=10, n_val=10):
 
     for i_m, degree in enumerate(ms):
         best_as[i_m] = know_m_find_best_a(
-            curve_trajectory, degree, times_train, times_val, init_a
+            curve_trajectory, degree, times_train, times_val, init_a, learn_rate
         )
         r2[i_m] = r_squared(
             curve_trajectory, times_train, times_val, degree, best_as[i_m]
