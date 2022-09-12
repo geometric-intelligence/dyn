@@ -8,16 +8,22 @@ import os
 import cv2
 import geomstats.backend as gs
 import geomstats.datasets.utils as data_utils
-import matplotlib.pyplot as plt
+
+# import matplotlib.pyplot as plt
 import numpy as np
 import skimage.io as skio
 
-import skimage.viewer as skview
+# import skimage.viewer as skview
 from geomstats.geometry.pre_shape import PreShapeSpace
-from skimage import io, measure
-from skimage.filters import gaussian, threshold_otsu
+
+# from skimage import io, measure
+from skimage import measure
+from skimage.filters import threshold_otsu
 
 import dyn.dyn.features.basic as basic
+
+#
+
 
 M_AMBIENT = 2
 
@@ -193,7 +199,7 @@ def preprocess(
         indices = sorted(
             np.random.choice(gs.arange(0, len(cells), 1), size=n_cells, replace=False)
         )
-        last_id = indices[-1]
+        # last_id = indices[-1]
         cells = [cells[idx] for idx in indices]
         labels_a = [labels_a[idx] for idx in indices]
         labels_b = [labels_b[idx] for idx in indices]
@@ -335,7 +341,6 @@ def load_mutated_retinal_cells(
     return preprocess(
         cells, surfaces, mutations, n_cells, n_sampling_points, quotient=quotient
     )
-
 
 
 def load_trajectory_of_border_cells(n_sampling_points=10):
@@ -684,7 +689,7 @@ def _septin_rotation_angle(cell_center, tif_path):
 
     # now, find the angle between the two vectors
 
-    # TDO: CHANGE VARIABLE POSITIVE TO BE "NEGATIVE"
+    # TDO: CHANGE VARIABLE POSITIVE TO BE "NEGATIVE" -- cant remmber if i did this
     if positive:
         theta = np.arccos(np.clip(np.dot(left_vector_u, circle_vector_u), -1.0, 1.0))
     else:
@@ -700,6 +705,7 @@ def _septin_align(curve, theta):
     aligned_curve = curve @ rotation.T
 
     return aligned_curve
+
 
 # def draft_load_septin_cells(group, n_sampling_points):
 #     """ Load dataset of septin control cells.
@@ -824,18 +830,16 @@ def load_septin_cells(group, n_sampling_points):
     There are 45 tif files in Septin Knockdown -> binary files
     There are 36 tif files in Septin Overexpression -> binary files
 
-    current problem: i think that the algorithm does not know whether to rotate
-    left or whether to rotate right (to get the dots aligned)
+    potential problem: I cant remember whether we figured out whether the thetas
+    were being calculated correctly...
 
     actually, also instead of aligning the dots to the middle of the frame, we
     should be aligning them to the y coordinate of the cell center.
     """
     dataset_dir = os.path.dirname(os.path.realpath(__file__))
 
-
     group_path = os.path.join(
         dataset_dir, "septin_groups/" + group + "/dotted_binary_images/*.tif"
-
     )
     group_tifs = glob.glob(group_path)
     print("Loading " + group + " data")
