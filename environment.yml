@@ -17,3 +17,4 @@ dependencies:
     - torch>=1.11
     - -r dev-requirements.txt
     - opencv-python
+    - wandb

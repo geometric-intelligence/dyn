@@ -11,6 +11,9 @@ dyn/saved_figs/retinal/*
 dyn/datasets/septin_groups/*
 dyn/datasets/ply\ 3D\ surface\ models
 
+# Wandb
+dyn/wandb/*
+
 # VScode config
 .DS_Store
 

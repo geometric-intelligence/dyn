@@ -55,6 +55,7 @@ def tau_ij(times_train, degree, i_val, j_train, times):
     l: the sum over degrees
     """
     tau_jl_sum = 0
+
     for degree_index in range(degree):
         tau_jl_sum += (
             tau_jl(j_train, times_train, degree_index) * times[i_val] ** degree_index
@@ -196,8 +197,13 @@ def mse(curve_trajectory, elastic_metric, times_train, times_val, degree, a):
 
     mse_sum = 0
 
-    for time_val in times_val:
-        r = r_mse(time_val, curve_trajectory, elastic_metric, times_train, degree)
+    for i_val, time_val in enumerate(times_val):
+        r = r_mse(
+            i_val=len(times_train) + i_val, 
+            curve_trajectory=curve_trajectory, 
+            elastic_metric=elastic_metric, 
+            times_train=times_train, 
+            degree=degree)
 
         rows, cols = r.shape
 
@@ -304,7 +310,11 @@ def r_squared_gradient(curve_trajectory, times_train, times_val, degree, a):
     elastic_metric = ElasticMetric(a, b, ambient_manifold=R2)
 
     fit_variation = mse(
-        curve_trajectory, elastic_metric, times_train, times_val, degree, a
+        curve_trajectory=curve_trajectory, 
+        elastic_metric=elastic_metric, 
+        times_train=times_train, 
+        times_val=times_val, 
+        degree=degree, a=a
     )
     d_fit_variation = d_mse(
         curve_trajectory, elastic_metric, times_train, times_val, degree, a
@@ -416,7 +426,7 @@ def r_squared(curve_trajectory, times_train, times_val, degree, a):
     elastic_metric = ElasticMetric(a, b, ambient_manifold=R2)
 
     fit_variation = mse(
-        curve_trajectory, elastic_metric, times_train, times_val, degree, a
+        curve_trajectory=curve_trajectory, elastic_metric=elastic_metric, times_train=times_train, times_val=times_val, degree=degree, a=a
     )
     total_variation = var(curve_trajectory, elastic_metric, times_val, a)
 
