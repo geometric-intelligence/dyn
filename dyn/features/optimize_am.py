@@ -212,11 +212,11 @@ def dr_mse_da(i_val, curve_trajectory, elastic_metric, times_train, degree):
     times = gs.arange(0, n_times, 1)
 
     fit_sum = 0
-    for j_train, time in enumerate(times_train):
+    for time_train in times_train:
 
         fit_sum += tau_ij(
-            times_train, degree, i_val, j_train, times
-        ) * derivative_q_curve(curve_trajectory[j_train], elastic_metric)
+            times_train, degree, i_val, time_train, times
+        ) * derivative_q_curve(curve_trajectory[time_train], elastic_metric)
 
     return derivative_q_curve(curve_trajectory[i_val], elastic_metric) - fit_sum
 
@@ -231,11 +231,11 @@ def r_mse(i_val, curve_trajectory, elastic_metric, times_train, degree):
     times = gs.arange(0, n_times, 1)
 
     fit_sum = 0
-    for j_train, time in enumerate(times_train):
+    for time_train in times_train:
 
         fit_sum += tau_ij(
-            times_train, degree, i_val, j_train, times
-        ) * elastic_metric.f_transform(curve_trajectory[j_train])
+            times_train, degree, i_val, time_train, times
+        ) * elastic_metric.f_transform(curve_trajectory[time_train])
 
     return elastic_metric.f_transform(curve_trajectory[i_val]) - fit_sum
 
@@ -281,9 +281,11 @@ def d_mse(curve_trajectory, elastic_metric, times_train, times_val, degree, a):
     d_mse_sum = 0
 
     # TO DO: change this so that n_prime times do not start at zero.
-    for i_val, time in enumerate(times_val):
-        dr_da = dr_mse_da(i_val, curve_trajectory, elastic_metric, times_train, degree)
-        r = r_mse(i_val, curve_trajectory, elastic_metric, times_train, degree)
+    for time_val in times_val:
+        dr_da = dr_mse_da(
+            time_val, curve_trajectory, elastic_metric, times_train, degree
+        )
+        r = r_mse(time_val, curve_trajectory, elastic_metric, times_train, degree)
 
         rows, cols = dr_da.shape
 
@@ -314,8 +316,8 @@ def mse(curve_trajectory, elastic_metric, times_train, times_val, degree, a):
 
     # TO DO: change this so that n_prime times do not start at zero.
     # however, might get other indexing errors from this
-    for i_val, time in enumerate(times_val):
-        r = r_mse(i_val, curve_trajectory, elastic_metric, times_train, degree)
+    for time_val in times_val:
+        r = r_mse(time_val, curve_trajectory, elastic_metric, times_train, degree)
 
         rows, cols = r.shape
 
@@ -349,14 +351,14 @@ def var(curve_trajectory, elastic_metric, times_val, a):
     n_sampling_points = len(curve_trajectory[0][:, 0])
 
     q_mean = 0
-    for i_val, time in enumerate(times_val):
-        q_mean += elastic_metric.f_transform(curve_trajectory[i_val])
+    for time_val in times_val:
+        q_mean += elastic_metric.f_transform(curve_trajectory[time_val])
 
     q_mean = q_mean / len(times_val)
 
     var_sum = 0
-    for i_val, time in enumerate(times_val):
-        r = r_var(curve_trajectory[i_val], elastic_metric, q_mean)
+    for time_val in times_val:
+        r = r_var(curve_trajectory[time_val], elastic_metric, q_mean)
 
         rows, cols = r.shape
 
@@ -380,19 +382,21 @@ def d_var(curve_trajectory, elastic_metric, times_val, a):
     n_sampling_points = len(curve_trajectory[0][:, 0])
 
     derivative_q_mean = 0
-    for i_val, time in enumerate(times_val):
-        derivative_q_mean += derivative_q_curve(curve_trajectory[i_val], elastic_metric)
+    for time_val in times_val:
+        derivative_q_mean += derivative_q_curve(
+            curve_trajectory[time_val], elastic_metric
+        )
     derivative_q_mean = derivative_q_mean / len(times_val)
 
     q_mean = 0
-    for i_val, time in enumerate(times_val):
-        q_mean += elastic_metric.f_transform(curve_trajectory[i_val])
+    for time_val in times_val:
+        q_mean += elastic_metric.f_transform(curve_trajectory[time_val])
     q_mean = q_mean / len(times_val)
 
     d_var_sum = 0
-    for i_val, time in enumerate(times_val):
-        dr_da = dr_var_da(curve_trajectory[i_val], elastic_metric, derivative_q_mean)
-        r = r_var(curve_trajectory[i_val], elastic_metric, q_mean)
+    for time_val in times_val:
+        dr_da = dr_var_da(curve_trajectory[time_val], elastic_metric, derivative_q_mean)
+        r = r_var(curve_trajectory[time_val], elastic_metric, q_mean)
 
         rows, cols = dr_da.shape
 
@@ -431,6 +435,21 @@ def r_squared_gradient(curve_trajectory, times_train, times_val, degree, a):
     gradient = (
         d_fit_variation * total_variation + fit_variation * d_total_variation
     ) / total_variation**2
+
+    print(
+        "a: "
+        + str(a)
+        + " r2_val: "
+        + str(r_squared(curve_trajectory, times_train, times_val, degree, a))
+        + " mse_val: "
+        + str(fit_variation)
+        + " var_val: "
+        + str(total_variation)
+        + " mse_train: "
+        + str(
+            mse(curve_trajectory, elastic_metric, times_train, times_train, degree, a)
+        )
+    )
 
     return gradient
 
@@ -530,7 +549,7 @@ def know_m_find_best_a(trajectory, degree, times_train, times_val, init_a, learn
     (MSE) function.
     """
     max_iter = 100
-    tol = 0.01
+    tol = 0.001
     return gradient_descent(
         init_a, learn_rate, max_iter, trajectory, times_train, times_val, degree, tol
     )
@@ -549,7 +568,7 @@ def find_best_am(curve_trajectory, init_a=0.2, n_train=10, n_val=10, learn_rate=
     best_as = np.empty([len(ms)])
 
     n_times = len(curve_trajectory)
-    times = gs.arange(1, n_times + 1, 1)
+    times = gs.arange(0, n_times, 1)
 
     times_train = times[:n_train]  # noqa: E203
     times_val = times[n_train : (n_train + n_val)]  # noqa: E203
@@ -567,12 +586,14 @@ def find_best_am(curve_trajectory, init_a=0.2, n_train=10, n_val=10, learn_rate=
             curve_trajectory, times_train, times_val, degree, best_as[i_m]
         )
         print(
-            "degree: "
+            "DEGREE: "
             + str(degree)
-            + "; best a: "
+            + "; BEST A: "
             + str(best_as[i_m])
-            + ";r2: "
+            + ";R2: "
             + str(r2[i_m])
+            + " ; R2_SRV: "
+            + str(r_squared(curve_trajectory, times_train, times_val, 1, 1))
         )
 
     # r2 is the best when it is closest to +1.
