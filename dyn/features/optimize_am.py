@@ -101,7 +101,8 @@ def dr_mse_da(i_val, curve_trajectory, elastic_metric, times_train, degree):
     to the power of a). remember that when we initialized
     elastic_metric, we set b= 0.5.
 
-    returns:
+    Returns
+    -------
     dr_da: the derivative of r_mse w.r.t. a.
     """
     n_times = len(curve_trajectory)
@@ -151,11 +152,11 @@ def d_mse(curve_trajectory, elastic_metric, times_train, times_val, degree, a):
     the number of sampling points reduces by 1 because we are operating
     in q space.
 
-    parameters:
-    -----------
-    r: is the distance between a q curve and the q curve expected from the
+    Parameters
+    ----------
+    r : is the distance between a q curve and the q curve expected from the
         regression fit
-    dr_da: the derivative of the distance between a q curve and the q curve
+    dr_da : the derivative of the distance between a q curve and the q curve
         expected from the regression fit
     """
     n_sampling_points = len(curve_trajectory[0][:, 0])
@@ -184,8 +185,8 @@ def mse(curve_trajectory, elastic_metric, times_train, times_val, degree, a):
     Computes the sum of the distances between each datapoint and its
     corresponding predicted datapoint.
 
-    parameters:
-    -----------
+    Parameters
+    ----------
     r: is the distance between a q curve and the q curve expected from the
         regression fit
     dr_da: the derivative of the distance between a q curve and the q curve
@@ -222,10 +223,10 @@ def var(curve_trajectory, elastic_metric, times_val, a):
 
     computes sum_i_train(norm(q_curve_i - mean_q_curve))
 
-    parameters:
-    -----------
-    r: is the distance between a q curve and the mean q curve
-    dr_da: the derivative of the distance between a q curve and the mean q curve.
+    Parameters
+    ----------
+    r : is the distance between a q curve and the mean q curve
+    dr_da : the derivative of the distance between a q curve and the mean q curve.
     """
     n_sampling_points = len(curve_trajectory[0][:, 0])
 
@@ -253,8 +254,8 @@ def d_var(curve_trajectory, elastic_metric, times_val, a):
 
     computes derivative of sum_i_train(norm(q_curve_i - mean_q_curve))
 
-    parameters:
-    -----------
+    Parameters
+    ----------
     r: is the distance between a q curve and the mean q curve
     dr_da: the derivative of the distance between a q curve and the mean q curve.
     """
@@ -335,7 +336,7 @@ def r_squared_gradient(curve_trajectory, times_train, times_val, degree, a):
 
 def gradient_descent(
     init_a,
-    learn_rate,
+    a_lr,
     max_iter,
     curve_trajectory,
     times_train,
@@ -350,14 +351,15 @@ def gradient_descent(
 
     sample function also returns steps. we could do that if we want to debug.
     """
-    steps = [init_a]  # history tracking
+    a_steps = [init_a]  # history tracking
+    r2_steps = [r_squared(curve_trajectory, times_train, times_val, degree, init_a)]
     a = init_a
 
     for _ in range(max_iter):
         if a >= 0:
             # gradient must be a function of a.
 
-            diff = learn_rate * r_squared_gradient(
+            diff = a_lr * r_squared_gradient(
                 curve_trajectory, times_train, times_val, degree, a
             )
             if np.abs(diff) < tol:
@@ -365,14 +367,15 @@ def gradient_descent(
             if a - diff < 0:
                 break
             a = a - diff
-            steps.append(a)  # history tracing
+            a_steps.append(a)  # history tracing
+            r2_steps.append(r_squared(curve_trajectory, times_train, times_val, degree, a))
 
-    return a
+    return a, a_steps, r2_steps
 
 
 # def gradient_ascent(
 #     init_a,
-#     learn_rate,
+#     a_lr,
 #     max_iter,
 #     curve_trajectory,
 #     times_train,
@@ -394,7 +397,7 @@ def gradient_descent(
 #         if a >= 0:
 #             # gradient must be a function of a.
 
-#             diff = learn_rate * r_squared_gradient(
+#             diff = a_lr * r_squared_gradient(
 #                 curve_trajectory, times_train, times_val, degree, a
 #             )
 #             if np.abs(diff) < tol:
@@ -420,7 +423,7 @@ def r_squared(curve_trajectory, times_train, times_val, degree, a):
     return 1 - fit_variation / total_variation
 
 
-def know_m_find_best_a(trajectory, degree, times_train, times_val, init_a, learn_rate):
+def know_m_find_best_a(trajectory, degree, times_train, times_val, init_a, a_lr):
     """Use a gradient search to find best a, for a given m.
 
     This function takes a trajectory and a degree and then uses gradient
@@ -430,21 +433,25 @@ def know_m_find_best_a(trajectory, degree, times_train, times_val, init_a, learn
     max_iter = 100
     tol = 0.001
     return gradient_descent(
-        init_a, learn_rate, max_iter, trajectory, times_train, times_val, degree, tol
+        init_a, a_lr, max_iter, trajectory, times_train, times_val, degree, tol
     )
 
 
-def find_best_am(curve_trajectory, init_a=0.2, n_train=10, n_val=10, learn_rate=0.1):
-    """For a given geodesic, find the (m,a) pair that minimnizes rmse.
+def find_best_am(curve_trajectory, init_a=0.2, m_grid=None, n_train=10, n_val=10, a_lr=0.1):
+    """For a given geodesic, find the (m,a) pair that maximizes R2.
 
     Use a grid search on m and a gradient search on a to find the best pairs of (m,a).
-    Then, choose the pair that minimizes root mean squared error.
+    Then, choose the pair that maximizes R2.
     """
-    # want to start with degree of 1 becuase that is a line, which is a geodesic
-    ms = np.arange(1, 6)
-    ms = np.array(ms)
-    r2 = np.empty([len(ms)])
-    best_as = np.empty([len(ms)])
+    if m_grid is None:
+        # want to start with degree of 1 because that is a line, which is a geodesic
+        ms = gs.arange(1, 6)
+    else:
+        ms = gs.array(m_grid)
+    r2 = - gs.ones([len(ms)])
+    best_as = - gs.ones([len(ms)])
+    as_steps = []
+    r2s_steps = []
 
     n_times = len(curve_trajectory)
     times = gs.arange(0, n_times, 1)
@@ -458,9 +465,12 @@ def find_best_am(curve_trajectory, init_a=0.2, n_train=10, n_val=10, learn_rate=
     print(times_test)
 
     for i_m, degree in enumerate(ms):
-        best_as[i_m] = know_m_find_best_a(
-            curve_trajectory, degree, times_train, times_val, init_a, learn_rate
+        best_a, a_steps, r2_steps = know_m_find_best_a(
+            curve_trajectory, degree, times_train, times_val, init_a, a_lr
         )
+        as_steps.append(a_steps)
+        r2s_steps.append(r2_steps)
+        best_as[i_m] = best_a
         r2[i_m] = r_squared(
             curve_trajectory, times_train, times_val, degree, best_as[i_m]
         )
@@ -487,3 +497,4 @@ def find_best_am(curve_trajectory, init_a=0.2, n_train=10, n_val=10, learn_rate=
     best_am = gs.stack([best_as[i_best_r2], ms[i_best_r2]], axis=-1)
 
     print("best_a: " + str(best_am[0]) + " best_m: " + str(best_am[1]))
+    return best_am[0], best_am[1], r2[i_best_r2], r2, as_steps, r2s_steps
