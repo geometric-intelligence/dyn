@@ -4,14 +4,8 @@ a is an elastic metric parameter, and m is the degree of polynomial
 regression fitting.
 
 if given a trajectory, this will be able to
-
-will import f_fit_functions
--i will need to create a new function in that that only returns the r^2 value
-    without plotting.
-
-Next, i will need to make another file that tests these values against common values
-therefore, we will have one file to train, another to validate, another to test.. either
-that, or i will include that in this notebook.
+- find the best (a*,degree*) pair for fitting the trajectory.
+- compare the r2 value of (a*,degree*) to the SRV geodesic
 """
 
 import os
