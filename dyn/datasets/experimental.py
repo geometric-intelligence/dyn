@@ -892,9 +892,9 @@ def load_septin_cells(group, n_sampling_points):
     circle_coords_array = np.array(circle_coords)
     lefts_array = np.array(lefts)
 
-    print("- Cell shapes: quotienting scaling (length).")
-    for i_cell, cell in enumerate(cell_shapes):
-        cell_shapes[i_cell] = cell / basic.perimeter(cell_shapes[i_cell])
+    #     print("- Cell shapes: quotienting scaling (length).")
+    #     for i_cell, cell in enumerate(cell_shapes):
+    #         cell_shapes[i_cell] = cell / basic.perimeter(cell_shapes[i_cell])
 
     print("- Cell shapes: properly aligning in direction of motion.")
 
