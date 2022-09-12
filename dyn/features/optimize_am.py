@@ -4,76 +4,17 @@ a is an elastic metric parameter, and m is the degree of polynomial
 regression fitting.
 
 if given a trajectory, this will be able to
-
-will import f_fit_functions
--i will need to create a new function in that that only returns the r^2 value
-    without plotting.
-
-Next, i will need to make another file that tests these values against common values
-therefore, we will have one file to train, another to validate, another to test.. either
-that, or i will include that in this notebook.
+- find the best (a*,degree*) pair for fitting the trajectory.
+- compare the r2 value of (a*,degree*) to the SRV geodesic
 """
 
 import os
 
 import geomstats.backend as gs
-
-# import matplotlib.pyplot as plt
 import numpy as np
 from geomstats.geometry.discrete_curves import R2, ElasticMetric
 
-# import torch
-
-# load discrete curves and R2 manifolds
-# from geomstats.geometry.discrete_curves import (
-#     R2,
-#     ClosedDiscreteCurves,
-#     DiscreteCurves,
-#     ElasticMetric,
-# )
-
-# from geomstats.geometry.euclidean import Euclidean
-# from geomstats.geometry.pre_shape import PreShapeSpace
-# from sklearn import linear_model
-# from sklearn.linear_model import LinearRegression
-# from sklearn.metrics import mean_squared_error, r2_score
-# from sklearn.preprocessing import PolynomialFeatures
-
-# import dyn.dyn.features.f_fit_functions as ffit
-
-# import dyn.dyn.features.basic as basic
 os.environ["GEOMSTATS_BACKEND"] = "pytorch"
-
-
-# def c_prime(curve):
-#     """Calculate c prime.
-
-#     parameters:
-#     -----------
-#     velocity: c prime
-#     speeds: norm of velocity.
-
-#     note that c prime is just the derivative between points along
-#     the curve. it is not the time derivative of the curve along
-#     the manifold.
-#     """
-#     n_sampling_points = curve.shape[-2]
-#     velocity = (n_sampling_points - 1) * (curve[..., 1:, :] - curve[..., :-1, :])
-#     polar_velocity = self.cartesian_to_polar(velocity)
-#     speeds = polar_velocity[..., :, 0]
-#     args = polar_velocity[..., :, 1]
-
-#     c_prime_norm = * gs.sqrt(speeds)
-
-#     return c_prime_norm
-
-
-# def sqrt_norm_c_prime(curve):
-#     """Calculate the square root of the norm of c prime.
-
-#     might not need, if we use f transform function...
-#     """
-#     return np.sqrt(gs.linalg.norm(c_prime(curve)))
 
 
 def tau_jl(j_train, times_train, degree_index):
@@ -81,13 +22,9 @@ def tau_jl(j_train, times_train, degree_index):
 
     this is the tau matrix. tau = (X^T*X)^-1*X^T
 
-    QUESTION: getting an error here because it is saying that
-    the matrix does not have an inverse... because it is
-    singular... what should i do??
-
-    POTENTIAL SOLUTION: don't use matrices. just do equivalent
-    math to get the desired component, that does not involve
-    taking matrix inverses.
+    TODO: more descriptive caption
+    parameters:
+    j_train:
     """
     # degree_index +1 so that it will have correct dimensions
     # rows are data points, columns are degrees
@@ -113,6 +50,7 @@ def tau_ij(times_train, degree, i_val, j_train, times):
 
     tau_ij is the sum of a bunch of tau_jl's.
 
+    TODO: more descriptive parameters
     variables:
     degree: polynomial degree
     l: the sum over degrees
@@ -154,47 +92,6 @@ def derivative_q_curve(curve, elastic_metric):
     der_cartesian = elastic_metric.polar_to_cartesian(der_polar)
 
     return der_cartesian
-
-
-# def capital_c(curve, elastic_metric):
-#     """Compute capital c.
-
-#     C is the derivative of the curve divided by the norm of the
-#     derivativeof the curve.
-
-#     this function is modeled off of the f_transform code in geomstats.
-
-#     we do calculations in polar coordinates because it is the best way to
-#     take the exponential of a vector. see:
-#     https://brilliant.org/wiki/polar-coordinates/
-
-#     the "..." in the array splicing means that it can take any shape, but we take
-#     the last two indices. Therefore, we could pass than one curve to this
-#     function if we wanted.
-#     """
-#     n_sampling_points = curve.shape[-2]
-#     velocity = (n_sampling_points - 1) * (curve[..., 1:, :] - curve[..., :-1, :])
-#     # wanted to print to see if only the right column was negative.
-#     # both columns are a mix of positive and neg.
-#     # print(velocity)
-#     polar_velocity = elastic_metric.cartesian_to_polar(velocity)
-#     # here, is where all the numbers in right column are negative.
-#     # print(polar_velocity)
-#     speeds = polar_velocity[..., :, 0]
-#     # the theta's in polar coordinates. this is what you multiply by to do
-#  exponentials.
-#     args = polar_velocity[..., :, 1]
-
-#     c_args = args * elastic_metric.a
-#     # QUESTION: is this right? want this to be equal to 1. based on gs code.
-#     c_norms = speeds**0
-#     c_polar = gs.stack([c_norms, c_args], axis=-1)
-#     c_cartesian = elastic_metric.polar_to_cartesian(c_polar)
-
-#     # these numbers are all fine.
-#     # print(c_cartesian)
-
-#     return c_cartesian
 
 
 def dr_mse_da(i_val, curve_trajectory, elastic_metric, times_train, degree):
@@ -243,23 +140,9 @@ def r_mse(i_val, curve_trajectory, elastic_metric, times_train, degree):
 def d_mse(curve_trajectory, elastic_metric, times_train, times_val, degree, a):
     """Compute the derivative of the MSE function w.r.t. a.
 
+    TODO:
     put more descriptive caption later.
-
-
-    will have to change this part...
-
-    essentially, mse = norm2(r_i)
-    but r_i = q_i-qhat_i, which are both matrices.
-    therefore, to calculate the norm of a matrix, we have to use
-    the Frobenius Norm, which essentially sums the squared absolute
-    value of every element.
-    But, when we take the derivative of mse w.r.t. a, that means
-    we are taking the derivative of an absolute value.
-    remember that the derivative of an abs value is equal to...
-
-    later, put all the math that i wrote on ipad to give better caption.
-
-    ... end of part i need to change
+    explain why we calculate the dot product of r this way.
 
     we must multiply each element by (1/the number of sampling points -1)
     because we are
