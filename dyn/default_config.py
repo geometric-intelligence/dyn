@@ -11,7 +11,6 @@ dataset_name = "synthetic_circle_to_ellipse"  # can be replaced later on with "e
 a_true = 1.
 m_true = 1
 
-n_trajectories = 100
 n_sampling_points = 50
 n_times = 25
 noise_var = 0.

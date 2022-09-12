@@ -23,7 +23,6 @@ wandb.init(
     config={
         "run_name": default_config.run_name,
         "dataset_name": default_config.dataset_name,
-        "n_trajectories": default_config.n_trajectories,
         "a_true": default_config.a_true,
         "m_true": default_config.m_true,
         "noise_var": default_config.noise_var,
@@ -44,13 +43,15 @@ dataset_of_trajectories = None
 if config.dataset_name == "synthetic_circle_to_ellipse":
     if config.m_true == 1 and config.a_true == 1:
         dataset_of_trajectories = synthetic.geodesics_circle_to_ellipse(
-            n_geodesics=config.n_trajectories, n_times=config.n_times, n_points=config.n_sampling_points
+            n_geodesics=1, n_times=config.n_times, n_points=config.n_sampling_points
 
     )
 if dataset_of_trajectories is None:
     raise NotImplementedError()
 
 one_trajectory = dataset_of_trajectories[0]
+print(f"The shape of the trajectory of curves is: {one_trajectory.shape}")
+
 if config.a_initialization == "close_to_ground_truth":
     init_a = config.a_true #- 0.2
 elif config.a_initialization == "random":
