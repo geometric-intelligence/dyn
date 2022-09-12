@@ -9,6 +9,7 @@ dyn/datasets/septin3d.zip
 dyn/saved_figs/osteosarcoma/*
 dyn/saved_figs/retinal/*
 dyn/datasets/septin_groups/*
+dyn/datasets/ply\ 3D\ surface\ models
 
 # VScode config
 .DS_Store
