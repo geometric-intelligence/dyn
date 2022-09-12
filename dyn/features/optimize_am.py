@@ -35,7 +35,6 @@ def tau_jl(j_train, times_train, degree_index):
         for degree in range(degree_index + 1):
             X[i_time][degree] = time**degree
 
-    # print(X)
     X_T = X.transpose()
 
     tau = np.linalg.inv(X_T @ X) @ X_T  # @ is matrix multiplication
@@ -163,7 +162,6 @@ def d_mse(curve_trajectory, elastic_metric, times_train, times_val, degree, a):
 
     d_mse_sum = 0
 
-    # TO DO: change this so that n_prime times do not start at zero.
     for time_val in times_val:
         dr_da = dr_mse_da(
             time_val, curve_trajectory, elastic_metric, times_train, degree
@@ -197,8 +195,6 @@ def mse(curve_trajectory, elastic_metric, times_train, times_val, degree, a):
 
     mse_sum = 0
 
-    # TO DO: change this so that n_prime times do not start at zero.
-    # however, might get other indexing errors from this
     for time_val in times_val:
         r = r_mse(time_val, curve_trajectory, elastic_metric, times_train, degree)
 
