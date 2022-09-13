@@ -7,6 +7,7 @@ import tempfile
 import default_config
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import wandb
 
 import dyn.dyn.datasets.synthetic as synthetic
@@ -38,7 +39,7 @@ wandb.run.name = config.run_name
 
 logging.info(
     f"Load dataset {config.dataset_name} with "
-    "a_true = {config.a_true} and m_true = {config.m_true}"
+    f"a_true = {config.a_true} and m_true = {config.m_true}"
 )
 dataset_of_trajectories = None
 if config.dataset_name == "synthetic_circle_to_ellipse":
@@ -65,15 +66,18 @@ best_a, best_m, best_r2, r2, r2_srv, iteration_histories = optimize_am.find_best
 )
 
 logging.info("Save results in wandb and local directory.")
-best_amr2_table = wandb.Table(
+best_amr2_df = pd.DataFrame(
     columns=["best_a", "best_m", "best_r2"], data=[[best_a, best_m, best_r2]]
 )
 
-r2s_from_m_table = wandb.Table(
+r2s_from_m_df = pd.DataFrame(
     columns=[f"m = {m}" for m in list(config.m_grid)], data=[list(r2), list(r2_srv)]
 )
 
-wandb.log({"best_amr2": best_amr2_table, "r2s_from_m": r2s_from_m_table})
+best_amr2_df.to_json(f"saved_figs/optimize_am/{config.run_name}_best_amr2.json")
+wandb.log({"best_amr2": wandb.Table(best_amr2_df)})
+r2s_from_m_df.to_json(f"saved_figs/optimize_am/{config.run_name}_r2s_from_m_df.json")
+wandb.log({"r2s_from_m": wandb.Table(r2s_from_m_df)})
 
 fig, axs = plt.subplots(1, 3, figsize=(10, 5))
 
@@ -85,7 +89,7 @@ for i_m, m in enumerate(config.m_grid):
     r2_train_steps = iteration_histories[i_m]["r2_train"]
     r2_val_steps = iteration_histories[i_m]["r2_val"]
 
-    iteration_history_table = wandb.Table(
+    iteration_history_df = pd.DataFrame(
         columns=["a", "mse_train", "mse_val", "r2_train", "r2_val"],
         data=[
             [float(a), float(mse_train), float(mse_val), float(r_train), float(r_val)]
@@ -94,8 +98,12 @@ for i_m, m in enumerate(config.m_grid):
             )
         ],
     )
+
     table_key = f"iteration_history_m_{m}"
-    wandb.log({table_key: iteration_history_table})
+    iteration_history_df.to_json(
+        f"saved_figs/optimize_am/{config.run_name}_iteration_history.json"
+    )
+    wandb.log({table_key: wandb.Table(iteration_history_df)})
 
 for i_plot, plot_name in enumerate(["a", "mse", "r2"]):
     for i_m, m in enumerate(config.m_grid):
@@ -103,23 +111,31 @@ for i_plot, plot_name in enumerate(["a", "mse", "r2"]):
         if plot_name == "a":
             iteration_history = iteration_histories[i_m][plot_name]
             iterations = np.arange(0, len(iteration_history))
-            axs[i_plot].plot(iterations, iteration_history, label=f"m = {m}")
+            axs[i_plot].plot(iterations, iteration_history, label=f"m = {m}", c=f"C{m}")
         elif plot_name in ["mse", "r2"]:
             iteration_history = iteration_histories[i_m][plot_name + "_train"]
             iterations = np.arange(0, len(iteration_history))
             axs[i_plot].plot(
-                iterations, iteration_history, label=f"m = {m}", linestyle="-"
+                iterations,
+                iteration_history,
+                label=f"m = {m} (train)",
+                c=f"C{m}",
+                linestyle="-",
             )
             iteration_history = iteration_histories[i_m][plot_name + "_val"]
             iterations = np.arange(0, len(iteration_history))
             axs[i_plot].plot(
-                iterations, iteration_history, label=f"m = {m}", linestyle="--"
+                iterations,
+                iteration_history,
+                label=f"m = {m} (val)",
+                c=f"C{m}",
+                linestyle="--",
             )
     axs[i_plot].set_xlabel("Iterations")
     axs[i_plot].set_title(plot_name)
     axs[i_plot].legend()
 
-fig.savefig(f"saved_figs/optimize_am/{config.run_name}.png")
+fig.savefig(f"saved_figs/optimize_am/{config.run_name}_iteration_history.png")
 wandb.log({"optimization_fig": wandb.Image(fig)})
 
 wandb.finish()
