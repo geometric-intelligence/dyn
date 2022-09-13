@@ -17,7 +17,7 @@ from geomstats.geometry.discrete_curves import R2, ElasticMetric
 os.environ["GEOMSTATS_BACKEND"] = "pytorch"
 
 
-def tau_jl(j_train, l_degree, times_train, degree_index):
+def tau_jl(j_train, l_degree, times_train, m_degree):
     """Calculate tau_jl.
 
     this is the tau matrix. tau = (X^T*X)^-1*X^T
@@ -28,12 +28,12 @@ def tau_jl(j_train, l_degree, times_train, degree_index):
     """
     # degree_index +1 so that it will have correct dimensions
     # rows are data points, columns are degrees
-    X = np.empty([len(times_train), degree_index + 1])
+    X = np.empty([len(times_train), m_degree + 1])
 
     # note: should probably make sure times starts at zero.
     for i_time, time in enumerate(times_train):
-        for degree in range(degree_index + 1):
-            X[i_time][degree] = time**degree
+        for i_degree in range(m_degree + 1):
+            X[i_time][i_degree] = time**i_degree
 
     X_T = X.transpose()
 
@@ -48,6 +48,7 @@ def tau_ij(times_train, degree, i_val, j_train, times):
     """Calculate tau_ij.
 
     tau_ij is the sum of a bunch of tau_jl's.
+    tau_ij = sum_{l=0}^m tau_jl * t_i ** l
 
     TODO: more descriptive parameters
     variables:
@@ -56,7 +57,7 @@ def tau_ij(times_train, degree, i_val, j_train, times):
     """
     tau_jl_sum = 0
 
-    for l_degree in range(degree):
+    for l_degree in range(degree + 1):
         tau_jl_sum += (
             tau_jl(j_train, l_degree, times_train, degree) * times[i_val] ** l_degree
         )
