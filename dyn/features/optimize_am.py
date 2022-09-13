@@ -199,11 +199,12 @@ def mse(curve_trajectory, elastic_metric, times_train, times_val, degree, a):
 
     for i_val, time_val in enumerate(times_val):
         r = r_mse(
-            i_val=len(times_train) + i_val, 
-            curve_trajectory=curve_trajectory, 
-            elastic_metric=elastic_metric, 
-            times_train=times_train, 
-            degree=degree)
+            i_val=len(times_train) + i_val,
+            curve_trajectory=curve_trajectory,
+            elastic_metric=elastic_metric,
+            times_train=times_train,
+            degree=degree,
+        )
 
         rows, cols = r.shape
 
@@ -310,11 +311,12 @@ def r_squared_gradient(curve_trajectory, times_train, times_val, degree, a):
     elastic_metric = ElasticMetric(a, b, ambient_manifold=R2)
 
     fit_variation = mse(
-        curve_trajectory=curve_trajectory, 
-        elastic_metric=elastic_metric, 
-        times_train=times_train, 
-        times_val=times_val, 
-        degree=degree, a=a
+        curve_trajectory=curve_trajectory,
+        elastic_metric=elastic_metric,
+        times_train=times_train,
+        times_val=times_val,
+        degree=degree,
+        a=a,
     )
     d_fit_variation = d_mse(
         curve_trajectory, elastic_metric, times_train, times_val, degree, a
@@ -363,6 +365,18 @@ def gradient_descent(
     """
     a_steps = [init_a]  # history tracking
     r2_steps = [r_squared(curve_trajectory, times_train, times_val, degree, init_a)]
+    elastic_metric = ElasticMetric(init_a, 0.5, ambient_manifold=R2)
+    mse_steps = [
+        mse(
+            curve_trajectory=curve_trajectory,
+            elastic_metric=elastic_metric,
+            times_train=times_train,
+            times_val=times_val,
+            degree=degree,
+            a=init_a,
+        )
+    ]
+
     a = init_a
 
     for _ in range(max_iter):
@@ -377,8 +391,23 @@ def gradient_descent(
             if a - diff < 0:
                 break
             a = a - diff
-            a_steps.append(a)  # history tracing
-            r2_steps.append(r_squared(curve_trajectory, times_train, times_val, degree, a))
+
+            # History tracing
+            a_steps.append(a)
+            r2_steps.append(
+                r_squared(curve_trajectory, times_train, times_val, degree, a)
+            )
+            elastic_metric = ElasticMetric(init_a, 0.5, ambient_manifold=R2)
+            mse_steps.append(
+                mse(
+                    curve_trajectory=curve_trajectory,
+                    elastic_metric=elastic_metric,
+                    times_train=times_train,
+                    times_val=times_val,
+                    degree=degree,
+                    a=a,
+                )
+            )
 
     return a, a_steps, r2_steps
 
@@ -426,7 +455,12 @@ def r_squared(curve_trajectory, times_train, times_val, degree, a):
     elastic_metric = ElasticMetric(a, b, ambient_manifold=R2)
 
     fit_variation = mse(
-        curve_trajectory=curve_trajectory, elastic_metric=elastic_metric, times_train=times_train, times_val=times_val, degree=degree, a=a
+        curve_trajectory=curve_trajectory,
+        elastic_metric=elastic_metric,
+        times_train=times_train,
+        times_val=times_val,
+        degree=degree,
+        a=a,
     )
     total_variation = var(curve_trajectory, elastic_metric, times_val, a)
 
@@ -447,7 +481,9 @@ def know_m_find_best_a(trajectory, degree, times_train, times_val, init_a, a_lr)
     )
 
 
-def find_best_am(curve_trajectory, init_a=0.2, m_grid=None, n_train=10, n_val=10, a_lr=0.1):
+def find_best_am(
+    curve_trajectory, init_a=0.2, m_grid=None, n_train=10, n_val=10, a_lr=0.1
+):
     """For a given geodesic, find the (m,a) pair that maximizes R2.
 
     Use a grid search on m and a gradient search on a to find the best pairs of (m,a).
@@ -458,8 +494,8 @@ def find_best_am(curve_trajectory, init_a=0.2, m_grid=None, n_train=10, n_val=10
         ms = gs.arange(1, 6)
     else:
         ms = gs.array(m_grid)
-    r2 = - gs.ones([len(ms)])
-    best_as = - gs.ones([len(ms)])
+    r2 = -gs.ones([len(ms)])
+    best_as = -gs.ones([len(ms)])
     as_steps = []
     r2s_steps = []
 
@@ -485,7 +521,7 @@ def find_best_am(curve_trajectory, init_a=0.2, m_grid=None, n_train=10, n_val=10
             curve_trajectory, times_train, times_val, degree, best_as[i_m]
         )
         print(
-            "DEGREE: "
+            "\n DEGREE: "
             + str(degree)
             + "; BEST A: "
             + str(best_as[i_m])
