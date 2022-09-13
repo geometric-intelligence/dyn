@@ -60,7 +60,7 @@ else:
     raise NotImplementedError()
 
 logging.info("Find best a and m corresponding to the trajectory.")
-best_a, best_m, best_r2, best_r2_from_m, as_steps, r2s_steps = optimize_am.find_best_am(
+best_a, best_m, best_r2, r2, r2_srv, iteration_histories = optimize_am.find_best_am(
     one_trajectory, init_a=init_a, m_grid=config.m_grid, a_lr=config.a_lr
 )
 
@@ -69,24 +69,37 @@ best_amr2_table = wandb.Table(
     columns=["best_a", "best_m", "best_r2"], data=[[best_a, best_m, best_r2]]
 )
 
-best_r2_from_m_table = wandb.Table(
-    columns=[f"m = {m}" for m in list(config.m_grid)], data=[list(best_r2_from_m)]
+r2s_from_m_table = wandb.Table(
+    columns=[f"m = {m}" for m in list(config.m_grid)], data=[list(r2), list(r2_srv)]
 )
 
-wandb.log({"best_amr2": best_amr2_table, "r2_from_m_results": best_r2_from_m_table})
+wandb.log({"best_amr2": best_amr2_table, "r2s_from_m": r2s_from_m_table})
 
-fig, axs = plt.subplots(1, 2, figsize=(10, 5))
-
+fig, axs = plt.subplots(1, 3, figsize=(10, 5))
 
 for i_m, m in enumerate(config.m_grid):
-    print(f"Log results for optimization on a for m = {m}")
-    axs[0].plot(np.arange(0, len(r2s_steps[i_m])), r2s_steps[i_m], label=f"m = {m}")
+    a_steps = iteration_histories[i_m]["a"]
+    mse_steps = iteration_histories[i_m]["mse"]
+    r2_steps = iteration_histories[i_m]["r2"]
 
-    a_r2_steps = wandb.Table(
-        columns=["a", "r2"],
-        data=[[float(a), float(r)] for a, r in zip(as_steps[i_m], r2s_steps[i_m])],
+    iteration_history_table = wandb.Table(
+        columns=["a", "mse", "r2"],
+        data=[
+            [float(a), float(mse), float(r)]
+            for a, mse, r in zip(a_steps, mse_steps, r2_steps)
+        ],
     )
-    table_key = f"a_r2_steps_m_{m}"
-    wandb.log({table_key: a_r2_steps})
+    table_key = f"iteration_history_m_{m}"
+    wandb.log({table_key: iteration_history_table})
+
+for i_plot, plot_name in enumerate(["a", "mse", "r2"]):
+    for i_m, m in enumerate(config.m_grid):
+        iteration_history = iteration_histories[plot_name]
+        iterations = np.arange(0, len(iteration_history))
+        axs[i_plot].plot(iterations, iteration_history, label=f"m = {m}")
+    axs[i_plot].set_title(plot_name)
+
+fig.savefig(f"dyn/dyn/saved_figs/optimize_am/{config.run_name}.png")
+wandb.log({"optimization_fig": fig})
 
 wandb.finish()

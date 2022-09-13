@@ -394,6 +394,7 @@ def gradient_descent(
 
             # History tracing
             a_steps.append(a)
+
             r2_steps.append(
                 r_squared(curve_trajectory, times_train, times_val, degree, a)
             )
@@ -409,7 +410,11 @@ def gradient_descent(
                 )
             )
 
-    return a, a_steps, r2_steps
+    iteration_history = {}
+    iteration_history["a"] = a_steps
+    iteration_history["r2"] = r2_steps
+    iteration_history["mse"] = mse_steps
+    return a, iteration_history
 
 
 # def gradient_ascent(
@@ -495,9 +500,9 @@ def find_best_am(
     else:
         ms = gs.array(m_grid)
     r2 = -gs.ones([len(ms)])
+    r2_srv = -gs.ones([len(ms)])
     best_as = -gs.ones([len(ms)])
-    as_steps = []
-    r2s_steps = []
+    iteration_histories = -gs.ones([len(ms)])
 
     n_times = len(curve_trajectory)
     times = gs.arange(0, n_times, 1)
@@ -511,15 +516,17 @@ def find_best_am(
     print(times_test)
 
     for i_m, degree in enumerate(ms):
-        best_a, a_steps, r2_steps = know_m_find_best_a(
+        best_a, iteration_history = know_m_find_best_a(
             curve_trajectory, degree, times_train, times_val, init_a, a_lr
         )
-        as_steps.append(a_steps)
-        r2s_steps.append(r2_steps)
         best_as[i_m] = best_a
+        iteration_histories[i_m] = iteration_history
+
         r2[i_m] = r_squared(
             curve_trajectory, times_train, times_val, degree, best_as[i_m]
         )
+
+        r2_srv[i_m] = r_squared(curve_trajectory, times_train, times_val, 1, 1)
         print(
             "\n DEGREE: "
             + str(degree)
@@ -528,7 +535,7 @@ def find_best_am(
             + ";R2: "
             + str(r2[i_m])
             + " ; R2_SRV: "
-            + str(r_squared(curve_trajectory, times_train, times_val, 1, 1))
+            + str(r2_srv[i_m])
         )
 
     # r2 is the best when it is closest to +1.
@@ -543,4 +550,4 @@ def find_best_am(
     best_am = gs.stack([best_as[i_best_r2], ms[i_best_r2]], axis=-1)
 
     print("best_a: " + str(best_am[0]) + " best_m: " + str(best_am[1]))
-    return best_am[0], best_am[1], r2[i_best_r2], r2, as_steps, r2s_steps
+    return best_am[0], best_am[1], r2[i_best_r2], r2, r2_srv, iteration_histories
