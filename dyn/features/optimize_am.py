@@ -312,7 +312,7 @@ def r_squared_gradient(curve_trajectory, times_train, times_val, degree, a):
     d_total_variation = d_var(curve_trajectory, elastic_metric, times_val, a)
 
     gradient = (
-        d_fit_variation * total_variation + fit_variation * d_total_variation
+        d_fit_variation * total_variation - fit_variation * d_total_variation
     ) / total_variation**2
 
     print(
