@@ -35,6 +35,7 @@ wandb.init(
 )
 
 config = wandb.config
+
 wandb.run.name = config.run_name
 
 logging.info(
@@ -67,7 +68,11 @@ best_a, best_m, best_r2, r2, r2_srv, iteration_histories = optimize_am.find_best
 
 logging.info("--->>> Save results in wandb and local saved_figs directory.")
 
-logging.info("1. Save best values for a, m and r2.")
+logging.info("1. Save the config locally.")
+config_df = pd.DataFrame.from_dict(dict(config))
+config_df.to_json(f"saved_figs/optimize_am/{config.run_name}_config.json")
+
+logging.info("2. Save best values for a, m and r2.")
 best_amr2_df = pd.DataFrame(
     columns=["best_a", "best_m", "best_r2"], data=[[best_a, best_m, best_r2]]
 )
@@ -81,8 +86,7 @@ wandb.log({"best_amr2": wandb.Table(dataframe=best_amr2_df)})
 r2s_from_m_df.to_json(f"saved_figs/optimize_am/{config.run_name}_r2s_from_m_df.json")
 wandb.log({"r2s_from_m": wandb.Table(dataframe=r2s_from_m_df)})
 
-logging.info("2. Save iteration histories during gradient descent.")
-fig, axs = plt.subplots(1, 3, figsize=(10, 5))
+logging.info("3. Save iteration histories during gradient descent.")
 
 for i_m, m in enumerate(config.m_grid):
     a_steps = iteration_histories[i_m]["a"]
@@ -108,14 +112,19 @@ for i_m, m in enumerate(config.m_grid):
     )
     wandb.log({table_key: wandb.Table(dataframe=iteration_history_df)})
 
-for i_plot, plot_name in enumerate(["a", "mse", "r2"]):
-    for i_m, m in enumerate(config.m_grid):
+fig, axs = plt.subplots(1, 3, figsize=(20, 5))
 
+for i_plot, plot_name in enumerate(["a", "mse", "r2"]):
+    if plot_name == "a":
+        axs[i_plot].axhline(config.a_true, label=f"a_true = {config.a_true}", c="black")
+    for i_m, m in enumerate(config.m_grid):
         if plot_name == "a":
             iteration_history = iteration_histories[i_m][plot_name]
             iterations = np.arange(0, len(iteration_history))
             axs[i_plot].plot(iterations, iteration_history, label=f"m = {m}", c=f"C{m}")
+
         elif plot_name in ["mse", "r2"]:
+            hval = 0 if plot_name == "mse" else 1
             iteration_history = iteration_histories[i_m][plot_name + "_train"]
             iterations = np.arange(0, len(iteration_history))
             axs[i_plot].plot(
@@ -134,6 +143,8 @@ for i_plot, plot_name in enumerate(["a", "mse", "r2"]):
                 c=f"C{m}",
                 linestyle="--",
             )
+
+            axs[i_plot].axhline(hval, c="black")
     axs[i_plot].set_xlabel("Iterations")
     axs[i_plot].set_title(plot_name)
     axs[i_plot].legend()
@@ -141,7 +152,7 @@ for i_plot, plot_name in enumerate(["a", "mse", "r2"]):
 fig.savefig(f"saved_figs/optimize_am/{config.run_name}_iteration_history.png")
 wandb.log({"optimization_fig": wandb.Image(fig)})
 
-logging.info("3. Save plots of predicted curves.")
+logging.info("4. Save plots of predicted curves.")
 # TODO.
 
 wandb.finish()
