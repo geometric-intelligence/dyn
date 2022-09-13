@@ -7,7 +7,7 @@ import dyn.dyn.datasets.synthetic as synthetic
 import dyn.dyn.features.optimize_am as optimize_am
 
 
-def test_tau_jl():
+def test_tau_matrix():
     """Test the computation of the tau_jl."""
     m = 1
     times_train = [1, 3, 4]
@@ -17,13 +17,7 @@ def test_tau_jl():
 
     assert expected_tau_mat.shape == (m + 1, 3), expected_tau_mat.shape
 
-    result_tau_mat = gs.zeros((m + 1, 3))
-
-    for l_degree in range(m + 1):
-        for j_train in range(3):
-            result_tau_mat[l_degree, j_train] = optimize_am.tau_jl(
-                j_train, l_degree, times_train, m
-            )
+    result_tau_mat = optimize_am.tau_matrix(times_train, m)
 
     print("expected", expected_tau_mat)
     print("result", result_tau_mat)

@@ -54,7 +54,7 @@ one_trajectory = dataset_of_trajectories[0]
 print(f"The shape of one_trajectory is: {one_trajectory.shape}")
 
 if config.a_initialization == "close_to_ground_truth":
-    init_a = config.a_true  # - 0.2
+    init_a = config.a_true - 0.2
 elif config.a_initialization == "random":
     init_a = 0.5
 else:

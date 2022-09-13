@@ -17,34 +17,25 @@ from geomstats.geometry.discrete_curves import R2, ElasticMetric
 os.environ["GEOMSTATS_BACKEND"] = "pytorch"
 
 
-def tau_jl(j_train, l_degree, times_train, m_degree):
-    """Calculate tau_jl.
+def tau_matrix(times_train, m_degree):
+    """Calculate tau matrix.
 
-    this is the tau matrix. tau = (X^T*X)^-1*X^T
-
-    TODO: more descriptive caption
-    parameters:
-    j_train:
+    tau = (X^T*X)^-1*X^T
     """
-    # degree_index +1 so that it will have correct dimensions
-    # rows are data points, columns are degrees
     X = np.empty([len(times_train), m_degree + 1])
 
     # note: should probably make sure times starts at zero.
     for i_time, time in enumerate(times_train):
+        # Note: range(m_degree + 1) goes from 0 to m
         for i_degree in range(m_degree + 1):
             X[i_time][i_degree] = time**i_degree
 
     X_T = X.transpose()
 
-    tau = np.linalg.inv(X_T @ X) @ X_T  # @ is matrix multiplication
-
-    # in tau, the rows are the degrees, and the n's are the columns.
-    # this is different than X.
-    return tau[l_degree, j_train]
+    return np.linalg.inv(X_T @ X) @ X_T  # @ is matrix multiplication
 
 
-def tau_ij(times_train, degree, i_val, j_train, times):
+def tau_ij(times_train, m_degree, i_val, j_train, times):
     """Calculate tau_ij.
 
     tau_ij is the sum of a bunch of tau_jl's.
@@ -55,12 +46,13 @@ def tau_ij(times_train, degree, i_val, j_train, times):
     degree: polynomial degree
     l: the sum over degrees
     """
-    tau_jl_sum = 0
+    # Note: Compute the tau matrix only once:
+    tau_mat = tau_matrix(times_train, m_degree)
 
-    for l_degree in range(degree + 1):
-        tau_jl_sum += (
-            tau_jl(j_train, l_degree, times_train, degree) * times[i_val] ** l_degree
-        )
+    tau_jl_sum = 0
+    # Note: range(m_degree + 1) goes from 0 to m
+    for l_degree in range(m_degree + 1):
+        tau_jl_sum += tau_mat[l_degree, j_train] * times[i_val] ** l_degree
 
     return tau_jl_sum
 
@@ -510,7 +502,7 @@ def know_m_find_best_a(trajectory, degree, times_train, times_val, init_a, a_lr)
     descent to find out which value of a minimizes the mean squared error
     (MSE) function.
     """
-    max_iter = 100
+    max_iter = 20
     tol = 0.001
     return gradient_descent(
         init_a, a_lr, max_iter, trajectory, times_train, times_val, degree, tol
