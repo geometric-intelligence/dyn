@@ -17,7 +17,7 @@ from geomstats.geometry.discrete_curves import R2, ElasticMetric
 os.environ["GEOMSTATS_BACKEND"] = "pytorch"
 
 
-def tau_jl(j_train, times_train, degree_index):
+def tau_jl(j_train, l_degree, times_train, degree_index):
     """Calculate tau_jl.
 
     this is the tau matrix. tau = (X^T*X)^-1*X^T
@@ -41,7 +41,7 @@ def tau_jl(j_train, times_train, degree_index):
 
     # in tau, the rows are the degrees, and the n's are the columns.
     # this is different than X.
-    return tau[degree_index, j_train]
+    return tau[l_degree, j_train]
 
 
 def tau_ij(times_train, degree, i_val, j_train, times):
@@ -56,9 +56,9 @@ def tau_ij(times_train, degree, i_val, j_train, times):
     """
     tau_jl_sum = 0
 
-    for degree_index in range(degree):
+    for l_degree in range(degree):
         tau_jl_sum += (
-            tau_jl(j_train, times_train, degree_index) * times[i_val] ** degree_index
+            tau_jl(j_train, l_degree, times_train, degree) * times[i_val] ** l_degree
         )
 
     return tau_jl_sum
