@@ -364,9 +364,23 @@ def gradient_descent(
     sample function also returns steps. we could do that if we want to debug.
     """
     a_steps = [init_a]  # history tracking
-    r2_steps = [r_squared(curve_trajectory, times_train, times_val, degree, init_a)]
     elastic_metric = ElasticMetric(init_a, 0.5, ambient_manifold=R2)
-    mse_steps = [
+
+    r2_train_steps = [
+        r_squared(curve_trajectory, times_train, times_train, degree, init_a)
+    ]
+    r2_val_steps = [r_squared(curve_trajectory, times_train, times_val, degree, init_a)]
+    mse_train_steps = [
+        mse(
+            curve_trajectory=curve_trajectory,
+            elastic_metric=elastic_metric,
+            times_train=times_train,
+            times_val=times_train,
+            degree=degree,
+            a=init_a,
+        )
+    ]
+    mse_val_steps = [
         mse(
             curve_trajectory=curve_trajectory,
             elastic_metric=elastic_metric,
@@ -392,14 +406,28 @@ def gradient_descent(
                 break
             a = a - diff
 
-            # History tracing
+            # History tracking
             a_steps.append(a)
+            elastic_metric = ElasticMetric(a, 0.5, ambient_manifold=R2)
 
-            r2_steps.append(
+            r2_train_steps.append(
+                r_squared(curve_trajectory, times_train, times_train, degree, a)
+            )
+            r2_val_steps.append(
                 r_squared(curve_trajectory, times_train, times_val, degree, a)
             )
-            elastic_metric = ElasticMetric(init_a, 0.5, ambient_manifold=R2)
-            mse_steps.append(
+
+            mse_train_steps.append(
+                mse(
+                    curve_trajectory=curve_trajectory,
+                    elastic_metric=elastic_metric,
+                    times_train=times_train,
+                    times_val=times_train,
+                    degree=degree,
+                    a=a,
+                )
+            )
+            mse_val_steps.append(
                 mse(
                     curve_trajectory=curve_trajectory,
                     elastic_metric=elastic_metric,
@@ -412,8 +440,10 @@ def gradient_descent(
 
     iteration_history = {}
     iteration_history["a"] = a_steps
-    iteration_history["r2"] = r2_steps
-    iteration_history["mse"] = mse_steps
+    iteration_history["r2_train"] = r2_train_steps
+    iteration_history["r2_val"] = r2_val_steps
+    iteration_history["mse_train"] = mse_train_steps
+    iteration_history["mse_val"] = mse_val_steps
     return a, iteration_history
 
 
@@ -502,7 +532,7 @@ def find_best_am(
     r2 = -gs.ones([len(ms)])
     r2_srv = -gs.ones([len(ms)])
     best_as = -gs.ones([len(ms)])
-    iteration_histories = -gs.ones([len(ms)])
+    iteration_histories = {}
 
     n_times = len(curve_trajectory)
     times = gs.arange(0, n_times, 1)

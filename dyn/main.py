@@ -79,14 +79,19 @@ fig, axs = plt.subplots(1, 3, figsize=(10, 5))
 
 for i_m, m in enumerate(config.m_grid):
     a_steps = iteration_histories[i_m]["a"]
-    mse_steps = iteration_histories[i_m]["mse"]
-    r2_steps = iteration_histories[i_m]["r2"]
+    mse_train_steps = iteration_histories[i_m]["mse_train"]
+    mse_val_steps = iteration_histories[i_m]["mse_val"]
+
+    r2_train_steps = iteration_histories[i_m]["r2_train"]
+    r2_val_steps = iteration_histories[i_m]["r2_val"]
 
     iteration_history_table = wandb.Table(
-        columns=["a", "mse", "r2"],
+        columns=["a", "mse_train", "mse_val", "r2_train", "r2_val"],
         data=[
-            [float(a), float(mse), float(r)]
-            for a, mse, r in zip(a_steps, mse_steps, r2_steps)
+            [float(a), float(mse_train), float(mse_val), float(r_train), float(r_val)]
+            for a, mse_train, mse_val, r_train, r_val in zip(
+                a_steps, mse_train_steps, mse_val_steps, r2_train_steps, r2_val_steps
+            )
         ],
     )
     table_key = f"iteration_history_m_{m}"
@@ -94,12 +99,27 @@ for i_m, m in enumerate(config.m_grid):
 
 for i_plot, plot_name in enumerate(["a", "mse", "r2"]):
     for i_m, m in enumerate(config.m_grid):
-        iteration_history = iteration_histories[plot_name]
-        iterations = np.arange(0, len(iteration_history))
-        axs[i_plot].plot(iterations, iteration_history, label=f"m = {m}")
-    axs[i_plot].set_title(plot_name)
 
-fig.savefig(f"dyn/dyn/saved_figs/optimize_am/{config.run_name}.png")
-wandb.log({"optimization_fig": fig})
+        if plot_name == "a":
+            iteration_history = iteration_histories[i_m][plot_name]
+            iterations = np.arange(0, len(iteration_history))
+            axs[i_plot].plot(iterations, iteration_history, label=f"m = {m}")
+        elif plot_name in ["mse", "r2"]:
+            iteration_history = iteration_histories[i_m][plot_name + "_train"]
+            iterations = np.arange(0, len(iteration_history))
+            axs[i_plot].plot(
+                iterations, iteration_history, label=f"m = {m}", linestyle="-"
+            )
+            iteration_history = iteration_histories[i_m][plot_name + "_val"]
+            iterations = np.arange(0, len(iteration_history))
+            axs[i_plot].plot(
+                iterations, iteration_history, label=f"m = {m}", linestyle="--"
+            )
+    axs[i_plot].set_xlabel("Iterations")
+    axs[i_plot].set_title(plot_name)
+    axs[i_plot].legend()
+
+fig.savefig(f"saved_figs/optimize_am/{config.run_name}.png")
+wandb.log({"optimization_fig": wandb.Image(fig)})
 
 wandb.finish()
