@@ -121,7 +121,9 @@ for i_plot, plot_name in enumerate(["a", "mse", "r2"]):
         if plot_name == "a":
             iteration_history = iteration_histories[i_m][plot_name]
             iterations = np.arange(0, len(iteration_history))
-            axs[i_plot].plot(iterations, iteration_history, label=f"m = {m}", c=f"C{m}")
+            axs[i_plot].plot(
+                iterations, iteration_history, label=f"m = {m}", c=f"C{m-1}"
+            )
 
         elif plot_name in ["mse", "r2"]:
             hval = 0 if plot_name == "mse" else 1
@@ -131,7 +133,7 @@ for i_plot, plot_name in enumerate(["a", "mse", "r2"]):
                 iterations,
                 iteration_history,
                 label=f"m = {m} (train)",
-                c=f"C{m}",
+                c=f"C{m-1}",
                 linestyle="-",
             )
             iteration_history = iteration_histories[i_m][plot_name + "_val"]
@@ -140,7 +142,7 @@ for i_plot, plot_name in enumerate(["a", "mse", "r2"]):
                 iterations,
                 iteration_history,
                 label=f"m = {m} (val)",
-                c=f"C{m}",
+                c=f"C{m-1}",
                 linestyle="--",
             )
 
@@ -149,6 +151,7 @@ for i_plot, plot_name in enumerate(["a", "mse", "r2"]):
     axs[i_plot].set_title(plot_name)
     axs[i_plot].legend()
 
+fig.suptitle(f"Optimization a, m gives: a = {best_a:.3f}, m = {best_m}, r2 = {best_r2}")
 fig.savefig(f"saved_figs/optimize_am/{config.run_name}_iteration_history.png")
 wandb.log({"optimization_fig": wandb.Image(fig)})
 

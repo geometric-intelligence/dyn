@@ -343,6 +343,7 @@ def gradient_descent(
     init_a,
     a_lr,
     max_iter,
+    min_iter,
     curve_trajectory,
     times_train,
     times_val,
@@ -386,16 +387,16 @@ def gradient_descent(
 
     a = init_a
 
-    for _ in range(max_iter):
+    for i_iter in range(max_iter):
         if a >= 0:
             # gradient must be a function of a.
 
             diff = a_lr * r_squared_gradient(
                 curve_trajectory, times_train, times_val, degree, a
             )
-            if np.abs(diff) < tol:
+            if np.abs(diff) < tol and i_iter > min_iter:
                 break
-            if a - diff < 0:
+            if a - diff < 0 and i_iter > min_iter:
                 break
             a = a - diff
 
@@ -495,7 +496,7 @@ def r_squared(curve_trajectory, times_train, times_val, degree, a):
     return 1 - fit_variation / total_variation
 
 
-def know_m_find_best_a(trajectory, degree, times_train, times_val, init_a, a_lr):
+def know_m_find_best_a(curve_trajectory, degree, times_train, times_val, init_a, a_lr):
     """Use a gradient search to find best a, for a given m.
 
     This function takes a trajectory and a degree and then uses gradient
@@ -503,9 +504,19 @@ def know_m_find_best_a(trajectory, degree, times_train, times_val, init_a, a_lr)
     (MSE) function.
     """
     max_iter = 20
+    min_iter = 3
     tol = 0.001
+
     return gradient_descent(
-        init_a, a_lr, max_iter, trajectory, times_train, times_val, degree, tol
+        init_a=init_a,
+        a_lr=a_lr,
+        max_iter=max_iter,
+        min_iter=min_iter,
+        curve_trajectory=curve_trajectory,
+        times_train=times_train,
+        times_val=times_val,
+        degree=degree,
+        tol=tol,
     )
 
 
@@ -551,7 +562,7 @@ def find_best_am(
 
         r2_srv[i_m] = r_squared(curve_trajectory, times_train, times_val, 1, 1)
         print(
-            "\n DEGREE: "
+            "---> DEGREE: "
             + str(degree)
             + "; BEST A: "
             + str(best_as[i_m])
@@ -559,6 +570,7 @@ def find_best_am(
             + str(r2[i_m])
             + " ; R2_SRV: "
             + str(r2_srv[i_m])
+            + "\n"
         )
 
     # r2 is the best when it is closest to +1.
