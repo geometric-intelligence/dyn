@@ -65,7 +65,7 @@ best_a, best_m, best_r2, r2, r2_srv, iteration_histories = optimize_am.find_best
     one_trajectory, init_a=init_a, m_grid=config.m_grid, a_lr=config.a_lr
 )
 
-logging.info("Save results in wandb and local directory.")
+logging.info("Save results in wandb and local saved_figs directory.")
 best_amr2_df = pd.DataFrame(
     columns=["best_a", "best_m", "best_r2"], data=[[best_a, best_m, best_r2]]
 )
@@ -75,9 +75,9 @@ r2s_from_m_df = pd.DataFrame(
 )
 
 best_amr2_df.to_json(f"saved_figs/optimize_am/{config.run_name}_best_amr2.json")
-wandb.log({"best_amr2": wandb.Table(best_amr2_df)})
+wandb.log({"best_amr2": wandb.Table(dataframe=best_amr2_df)})
 r2s_from_m_df.to_json(f"saved_figs/optimize_am/{config.run_name}_r2s_from_m_df.json")
-wandb.log({"r2s_from_m": wandb.Table(r2s_from_m_df)})
+wandb.log({"r2s_from_m": wandb.Table(dataframe=r2s_from_m_df)})
 
 fig, axs = plt.subplots(1, 3, figsize=(10, 5))
 
@@ -103,7 +103,7 @@ for i_m, m in enumerate(config.m_grid):
     iteration_history_df.to_json(
         f"saved_figs/optimize_am/{config.run_name}_iteration_history.json"
     )
-    wandb.log({table_key: wandb.Table(iteration_history_df)})
+    wandb.log({table_key: wandb.Table(dataframe=iteration_history_df)})
 
 for i_plot, plot_name in enumerate(["a", "mse", "r2"]):
     for i_m, m in enumerate(config.m_grid):
