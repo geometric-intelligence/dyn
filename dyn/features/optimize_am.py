@@ -35,11 +35,15 @@ def tau_matrix(times_train, m_degree):
     return np.linalg.inv(X_T @ X) @ X_T  # @ is matrix multiplication
 
 
-def tau_ij(times_train, m_degree, i_val, j_train, times):
+def tau_sum(times_train, m_degree, i_val, j_train, times):
     """Calculate tau_ij.
 
-    tau_ij is the sum of a bunch of tau_jl's.
-    tau_ij = sum_{l=0}^m tau_jl * t_i ** l
+    tau_sum is the sum of a bunch of tau's.
+    tau_sum = sum_{l=0}^m tau_jl * t_i ** l
+
+    tau_sum sums over tau matrices of increasing degrees,
+    up to the highest degree. The highest degree is the degree
+    of polynomial that this whole program is fitting
 
     TODO: more descriptive parameters
     variables:
@@ -49,12 +53,12 @@ def tau_ij(times_train, m_degree, i_val, j_train, times):
     # Note: Compute the tau matrix only once:
     tau_mat = tau_matrix(times_train, m_degree)
 
-    tau_jl_sum = 0
+    tau_sum = 0
     # Note: range(m_degree + 1) goes from 0 to m
     for l_degree in range(m_degree + 1):
-        tau_jl_sum += tau_mat[l_degree, j_train] * times[i_val] ** l_degree
+        tau_sum += tau_mat[l_degree, j_train] * times[i_val] ** l_degree
 
-    return tau_jl_sum
+    return tau_sum
 
 
 def derivative_q_curve(curve, elastic_metric):
@@ -105,7 +109,7 @@ def dr_mse_da(i_val, curve_trajectory, elastic_metric, times_train, degree):
     fit_sum = 0
     for time_train in times_train:
 
-        fit_sum += tau_ij(
+        fit_sum += tau_sum(
             times_train, degree, i_val, time_train, times
         ) * derivative_q_curve(curve_trajectory[time_train], elastic_metric)
 
@@ -113,18 +117,14 @@ def dr_mse_da(i_val, curve_trajectory, elastic_metric, times_train, degree):
 
 
 def r_mse(i_val, curve_trajectory, elastic_metric, times_train, degree):
-    """Calculate r_mse for a given i_val (i.e. a given s parameter).
-
-    This function is pretty much the same as dr_da except without the
-    log(C)'s.
-    """
+    """Calculate r_mse for a given i_val (i.e. a given s parameter)."""
     n_times = len(curve_trajectory)
     times = gs.arange(0, n_times, 1)
 
     fit_sum = 0
     for time_train in times_train:
 
-        fit_sum += tau_ij(
+        fit_sum += tau_sum(
             times_train, degree, i_val, time_train, times
         ) * elastic_metric.f_transform(curve_trajectory[time_train])
 
@@ -190,9 +190,9 @@ def mse(curve_trajectory, elastic_metric, times_train, times_val, degree, a):
 
     mse_sum = 0
 
-    for i_val, time_val in enumerate(times_val):
+    for time_val in times_val:
         r = r_mse(
-            i_val=len(times_train) + i_val,
+            i_val=time_val,
             curve_trajectory=curve_trajectory,
             elastic_metric=elastic_metric,
             times_train=times_train,
@@ -318,7 +318,7 @@ def r_squared_gradient(curve_trajectory, times_train, times_val, degree, a):
     d_total_variation = d_var(curve_trajectory, elastic_metric, times_val, a)
 
     gradient = (
-        d_fit_variation * total_variation + fit_variation * d_total_variation
+        d_fit_variation * total_variation - fit_variation * d_total_variation
     ) / total_variation**2
 
     print(
