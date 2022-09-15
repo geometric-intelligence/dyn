@@ -6,9 +6,10 @@ from geomstats.geometry.discrete_curves import R2, DiscreteCurves
 
 CURVES_SPACE = DiscreteCurves(R2)
 METRIC = CURVES_SPACE.srv_metric
-#uncomment code below if you want to create geodesics with synthetic data using elastic metric
-#CURVES_SPACE = DiscreteCurves(R2, a=1,b=10000)
-#METRIC = CURVES_SPACE.elastic_metric
+# uncomment code below if you want to create geodesics with synthetic data
+# using elastic metric
+# CURVES_SPACE = DiscreteCurves(R2, a=1,b=10000)
+# METRIC = CURVES_SPACE.elastic_metric
 
 
 def rectangle(n_points_height, n_points_length, height, length, protusion=0):
@@ -38,15 +39,17 @@ def rectangle(n_points_height, n_points_length, height, length, protusion=0):
     left = gs.vstack((minus_lengths, height_neg_axis)).T[:-1]
 
     rectangle[: n_points_length - 1] = bottom
-    rectangle[n_points_length - 1 : n_points_length + n_points_height - 2] = right
+    rectangle[
+        n_points_length - 1 : n_points_length + n_points_height - 2  # noqa: E203
+    ] = right  # noqa: E203
     rectangle[
         n_points_length
         + n_points_height
-        - 2 : 2 * n_points_length
+        - 2 : 2 * n_points_length  # noqa: E203
         + n_points_height
         - 3
     ] = top
-    rectangle[2 * n_points_length + n_points_height - 3 :] = left
+    rectangle[2 * n_points_length + n_points_height - 3 :] = left  # noqa: E203
 
     return rectangle
 
@@ -207,7 +210,7 @@ def geodesics_circle_to_ellipse(
             b=b[i_geodesic],
             protusion_height=protusion_height,
         )
-        geodesic = METRIC.geodesic(initial_curve=start_circle, end_curve=end_ellipse)
+        geodesic = METRIC.geodesic(start_circle, end_ellipse)
         geodesics[i_geodesic] = geodesic(times)
 
     return geodesics
