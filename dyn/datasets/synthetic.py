@@ -214,3 +214,11 @@ def geodesics_circle_to_ellipse(
         geodesics[i_geodesic] = geodesic(times)
 
     return geodesics
+
+
+def geodesic_between_curves(start_curve, end_curve, a, b, n_times=20, n_points=40):
+    """Generate a geodesic between two real cell curves.
+
+    WORK IN PROGRESS
+    """
+    return 1
