@@ -11,6 +11,8 @@ dyn/saved_figs/retinal/*
 dyn/saved_figs/optimize_am/*
 dyn/datasets/septin_groups/*
 dyn/datasets/ply\ 3D\ surface\ models
+dyn/saved_figs/septin/*
+dyn/saved_txt/septin/*
 
 # Wandb
 dyn/wandb/*
