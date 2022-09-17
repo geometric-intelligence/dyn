@@ -9,6 +9,9 @@ from geomstats.geometry.discrete_curves import (  # , ClosedDiscreteCurves
     ElasticMetric,
 )
 
+# from sklearn.linear_model import LinearRegression
+# from sklearn.preprocessing import PolynomialFeatures
+
 CURVES_SPACE = DiscreteCurves(R2)
 METRIC = CURVES_SPACE.srv_metric
 # uncomment code below if you want to create geodesics with synthetic data
@@ -221,8 +224,15 @@ def geodesics_circle_to_ellipse(
     return geodesics
 
 
-def trajectory_between_curves(
-    start_curve, end_curve, a, b, degree=1, n_times=20, n_points=40
+def geodesic_between_curves(
+    start_curve,
+    end_curve,
+    a,
+    b,
+    degree=1,
+    n_times=20,
+    n_sampling_points=40,
+    noise_var=0,
 ):
     """Generate a trajectory between two real cell curves.
 
@@ -234,8 +244,6 @@ def trajectory_between_curves(
     - It samples from this geodesic in q-space.
     - Then, it transforms curves back into curve space using the inverese f
         transform.
-
-    WORK IN PROGRESS
     """
     #     CLOSED_CURVES_SPACE = ClosedDiscreteCurves(R2)
 
@@ -260,4 +268,49 @@ def trajectory_between_curves(
 
     #     closed_curves = CLOSED_CURVES_SPACE.projection(curves)
 
-    return curves
+    if noise_var == 0.0:
+        return curves
+    else:
+        print("Error: Different noise levels not implemented")
+
+
+# def trajectory_between_curves_regression(
+#     start_curve, end_curve, a, b, degree=1, n_times=20, n_points=40
+# ):
+#     """Generate a synthetic trajectory between cells using regression.
+
+#     Process used:
+#     - This notebook takes an input curve and and end curve
+#     - It then uses an f-transform to put these curves in a linear "q-space"
+#     - It draws a geodesic between these two curves in "q-space" (a line).
+#     - q = t * q1 + (1-t) * q2 is used to draw lines between points.
+#     - It samples from this geodesic in q-space.
+#     - Then, it transforms curves back into curve space using the inverese f
+#         transform.
+#     """
+#     elastic_metric = ElasticMetric(a, b, ambient_manifold=R2)
+
+#     q = elastic_metric.f_transform(gs.stack([start_curve,end_curve], axis = -1))
+
+#     q_vector = q.reshape((2, -1))
+
+#     times = gs.arange(0, n_times, 1)
+#     times = np.reshape(times, (n_times, 1))
+
+#     x = np.reshape(np.array([0, n_times-1]), (2, 1))
+#     y = q_vector
+
+#     polynomial_features = PolynomialFeatures(degree=degree)
+#     x_poly = polynomial_features.fit_transform(x)
+
+#     model = LinearRegression()
+#     model.fit(x_poly, y)
+#     y_poly_pred = model.predict(x_poly)
+
+#     q_trajectory = torch.from_numpy(y_poly_pred)
+
+#     starting_point_array = gs.zeros((len(q_trajectory), 2))
+
+#     curves = elastic_metric.f_transform_inverse(q_trajectory, starting_point_array)
+
+#     return curves

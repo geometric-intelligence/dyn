@@ -8,7 +8,8 @@ logging.basicConfig(level=logging.INFO)
 
 # Dataset
 dataset_name = (
-    "synthetic_circle_to_ellipse"  # can be replaced later on with "experimental"
+    #     "synthetic_circle_to_ellipse"
+    "synthetic_geodesic_between_curves"
 )
 a_true = 1.0
 m_true = 1
