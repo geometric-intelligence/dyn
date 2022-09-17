@@ -2,7 +2,12 @@
 
 import geomstats.backend as gs
 import numpy as np
-from geomstats.geometry.discrete_curves import R2, DiscreteCurves
+import torch
+from geomstats.geometry.discrete_curves import (  # , ClosedDiscreteCurves
+    R2,
+    DiscreteCurves,
+    ElasticMetric,
+)
 
 CURVES_SPACE = DiscreteCurves(R2)
 METRIC = CURVES_SPACE.srv_metric
@@ -216,9 +221,43 @@ def geodesics_circle_to_ellipse(
     return geodesics
 
 
-def geodesic_between_curves(start_curve, end_curve, a, b, n_times=20, n_points=40):
-    """Generate a geodesic between two real cell curves.
+def trajectory_between_curves(
+    start_curve, end_curve, a, b, degree=1, n_times=20, n_points=40
+):
+    """Generate a trajectory between two real cell curves.
+
+    Process used:
+    - This notebook takes an input curve and and end curve
+    - It then uses an f-transform to put these curves in a linear "q-space"
+    - It draws a geodesic between these two curves in "q-space" (a line).
+    - q = t * q1 + (1-t) * q2 is used to draw lines between points.
+    - It samples from this geodesic in q-space.
+    - Then, it transforms curves back into curve space using the inverese f
+        transform.
 
     WORK IN PROGRESS
     """
-    return 1
+    #     CLOSED_CURVES_SPACE = ClosedDiscreteCurves(R2)
+
+    elastic_metric = ElasticMetric(a, b, ambient_manifold=R2)
+
+    q_start = elastic_metric.f_transform(start_curve)
+    q_end = elastic_metric.f_transform(end_curve)
+
+    times = gs.arange(0, n_times, 1)
+
+    q_trajectory = []
+    for time in times:
+        q_trajectory.append(time * q_start + (1 - time) * q_end)
+
+    q_trajectory = np.array(q_trajectory)
+
+    q_trajectory = torch.from_numpy(q_trajectory)
+
+    starting_point_array = gs.zeros((n_times, 2))
+
+    curves = elastic_metric.f_transform_inverse(q_trajectory, starting_point_array)
+
+    #     closed_curves = CLOSED_CURVES_SPACE.projection(curves)
+
+    return curves
