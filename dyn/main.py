@@ -23,14 +23,16 @@ os.environ["GEOMSTATS_BACKEND"] = "pytorch"
 # - can give it noise maybe in synthetic.
 a_truths = [1.0]  # .2, 0.5, 0.8, 1.0, 1.3, 1.6, 2.0]
 m_truths = [1]
-sampling_points = [100]  # 10, 50, 100, 200, 300, 500]
-noise_vars = [0.0]
+test_sampling_points = [50]  # 10, 50, 100]
+test_noise_vars = [0.0]
 
 
 def run_tests():
     """Run wandb with different input parameters and tests."""
     n_cells = 650
-    n_sampling_points = 100
+    default_n_sampling_points = 200
+    default_noise_var = 0
+    default_n_times = 20
     quotient = ["scaling", "rotation"]
     (
         cells,
@@ -38,36 +40,60 @@ def run_tests():
         labels_a,
         labels_b,
     ) = experimental.load_treated_osteosarcoma_cells(
-        n_cells=n_cells, n_sampling_points=n_sampling_points, quotient=quotient
+        n_cells=n_cells, n_sampling_points=default_n_sampling_points, quotient=quotient
     )
-    start_cell = cell_shapes[0]
-    end_cell = cell_shapes[15]
+    default_start_cell = cell_shapes[0]
+    default_end_cell = cell_shapes[15]
 
     # here, generate a list of random #'s between .1 and 5
     diffs = [0, 0.2, 0.5]
 
     for a_tr in a_truths:
         # create list of init_as for this ground truth.
-        a_inits = [10, 5]
+        #         a_inits = [10, 5]
+        a_inits = []
         for diff in diffs:
             a_inits.append(a_tr + diff)
             if a_tr - diff > 0:
                 a_inits.append(a_tr - diff)
 
         for m_tr in m_truths:
-            for noise_var in noise_vars:
+            for test_noise_var in test_noise_vars:
                 for init_a in a_inits:
-                    n_times = 20
                     run_wandb(
                         a_tr,
                         m_tr,
-                        n_times,
-                        n_sampling_points,
-                        noise_var,
+                        default_n_times,
+                        default_n_sampling_points,
+                        test_noise_var,
                         init_a,
-                        start_cell,
-                        end_cell,
+                        default_start_cell,
+                        default_end_cell,
                     )
+            for test_n_sampling_points in test_sampling_points:
+                if test_n_sampling_points != default_n_sampling_points:
+                    # create start/end cells with fewer sampling points.
+                    test_indexes = np.linspace(
+                        0, default_n_sampling_points, num=test_n_sampling_points
+                    )
+                    test_start_cell = np.empty([test_n_sampling_points, 2])
+                    test_end_cell = np.empty([test_n_sampling_points, 2])
+                    for i_test_cell, i_default_cell in enumerate(test_indexes):
+                        test_start_cell[i_test_cell] = default_start_cell[
+                            i_default_cell
+                        ]
+                        test_end_cell[i_test_cell] = default_end_cell[i_default_cell]
+                    for init_a in a_inits:
+                        run_wandb(
+                            a_tr,
+                            m_tr,
+                            default_n_times,
+                            test_n_sampling_points,
+                            default_noise_var,
+                            init_a,
+                            test_start_cell,
+                            test_end_cell,
+                        )
 
 
 def run_wandb(
@@ -75,11 +101,12 @@ def run_wandb(
 ):
     """Run wandb script for the following parameters."""
     logging.info(f"Starting run {default_config.run_name}")
+
     wandb.init(
         project="metric_learning",
         dir=tempfile.gettempdir(),
         config={
-            "run_name": default_config.run_name,
+            "run_name": f"at{a_true}_ai{init_a}_mt{m_true}_nT{n_times}_nsp{n_sampling_points}_nv{noise_var}_{default_config.now}",  # noqa: E501
             "dataset_name": default_config.dataset_name,
             "a_true": a_true,
             "m_true": m_true,
@@ -97,6 +124,13 @@ def run_wandb(
     config = wandb.config
 
     wandb.run.name = config.run_name
+
+    wandb.config.a_true = a_true
+    wandb.config.m_true = m_true
+    wandb.config.n_times = n_times
+    wandb.config.n_sampling_points = n_sampling_points
+    wandb.config.noise_var = noise_var
+    wandb.config.init_a = init_a
 
     logging.info(
         f"Load dataset {config.dataset_name} with "

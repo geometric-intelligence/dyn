@@ -1,5 +1,4 @@
 """Default configuration for a run."""
-
 import logging
 from datetime import datetime
 
