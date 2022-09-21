@@ -320,6 +320,8 @@ def r_squared_gradient(curve_trajectory, times_train, times_val, m, a):
         d_fit_variation * total_variation - fit_variation * d_total_variation
     ) / total_variation**2
 
+    # Note: it would be better to have these prints outside of this function
+    # because they are not directly related to the computation of the gradient
     r2_train = r_squared(curve_trajectory, times_train, times_train, m, a)
     r2_val = r_squared(curve_trajectory, times_train, times_val, m, a)
     mse_train = mse(curve_trajectory, elastic_metric, times_train, times_train, m, a)
@@ -335,13 +337,14 @@ def r_squared_gradient(curve_trajectory, times_train, times_val, m, a):
 
 
 def gradient_descent(
-    init_a,
+    a_init,
     a_lr,
     max_iter,
     min_iter,
     curve_trajectory,
     times_train,
     times_val,
+    times_test,
     degree,
     tol=0.01,
 ):
@@ -352,13 +355,16 @@ def gradient_descent(
 
     sample function also returns steps. we could do that if we want to debug.
     """
-    a_steps = [init_a]  # history tracking
-    elastic_metric = ElasticMetric(init_a, 0.5, ambient_manifold=R2)
+    a_steps = [a_init]  # history tracking
+    elastic_metric = ElasticMetric(a_init, 0.5, ambient_manifold=R2)
 
     r2_train_steps = [
-        r_squared(curve_trajectory, times_train, times_train, degree, init_a)
+        r_squared(curve_trajectory, times_train, times_train, degree, a_init)
     ]
-    r2_val_steps = [r_squared(curve_trajectory, times_train, times_val, degree, init_a)]
+    r2_val_steps = [r_squared(curve_trajectory, times_train, times_val, degree, a_init)]
+    r2_test_steps = [
+        r_squared(curve_trajectory, times_train, times_test, degree, a_init)
+    ]
     mse_train_steps = [
         mse(
             curve_trajectory=curve_trajectory,
@@ -366,7 +372,7 @@ def gradient_descent(
             times_train=times_train,
             times_val=times_train,
             degree=degree,
-            a=init_a,
+            a=a_init,
         )
     ]
     mse_val_steps = [
@@ -376,11 +382,31 @@ def gradient_descent(
             times_train=times_train,
             times_val=times_val,
             degree=degree,
-            a=init_a,
+            a=a_init,
         )
     ]
+    mse_test_steps = [
+        mse(
+            curve_trajectory=curve_trajectory,
+            elastic_metric=elastic_metric,
+            times_train=times_train,
+            times_val=times_test,
+            degree=degree,
+            a=a_init,
+        )
+    ]
+    var_steps = [var(curve_trajectory, elastic_metric, times_val, a_init)]
 
-    a = init_a
+    for i in range(max_iter):
+        a = a_steps[-1]
+        a -= a_lr * r_squared_gradient(
+            curve_trajectory, times_train, times_val, degree, a
+        )
+        a_steps.append(a)
+
+        elastic_metric = ElasticMetric
+
+    a = a_init
 
     for i_iter in range(max_iter):
         if a >= 0:
@@ -405,6 +431,9 @@ def gradient_descent(
             r2_val_steps.append(
                 r_squared(curve_trajectory, times_train, times_val, degree, a)
             )
+            r2_test_steps.append(
+                r_squared(curve_trajectory, times_train, times_test, degree, a)
+            )
 
             mse_train_steps.append(
                 mse(
@@ -426,18 +455,31 @@ def gradient_descent(
                     a=a,
                 )
             )
+            mse_test_steps.append(
+                mse(
+                    curve_trajectory=curve_trajectory,
+                    elastic_metric=elastic_metric,
+                    times_train=times_train,
+                    times_val=times_test,
+                    degree=degree,
+                    a=a,
+                )
+            )
+            var_steps.append(var(curve_trajectory, elastic_metric, times_val, a))
 
     iteration_history = {}
     iteration_history["a"] = a_steps
     iteration_history["r2_train"] = r2_train_steps
     iteration_history["r2_val"] = r2_val_steps
+    iteration_history["r2_test"] = r2_test_steps
     iteration_history["mse_train"] = mse_train_steps
     iteration_history["mse_val"] = mse_val_steps
+    iteration_history["mse_test"] = mse_test_steps
     return a, iteration_history
 
 
 # def gradient_ascent(
-#     init_a,
+#     a_init,
 #     a_lr,
 #     max_iter,
 #     curve_trajectory,
@@ -453,8 +495,8 @@ def gradient_descent(
 
 #     sample function also returns steps. we could do that if we want to debug.
 #     """
-#     steps = [init_a]  # history tracking
-#     a = init_a
+#     steps = [a_init]  # history tracking
+#     a = a_init
 
 #     for _ in range(max_iter):
 #         if a >= 0:
@@ -492,7 +534,7 @@ def r_squared(curve_trajectory, times_train, times_val, degree, a):
 
 
 def know_m_find_best_a(
-    curve_trajectory, degree, times_train, times_val, times_test, init_a, a_lr
+    curve_trajectory, degree, times_train, times_val, times_test, a_init, a_lr
 ):
     """Use a gradient search to find best a, for a given m.
 
@@ -503,15 +545,16 @@ def know_m_find_best_a(
     max_iter = 20
     min_iter = 3
     tol = 0.001
-
+    print(f"DEGREE {degree}: Gradient descent on a for R2 val:")
     return gradient_descent(
-        init_a=init_a,
+        a_init=a_init,
         a_lr=a_lr,
         max_iter=max_iter,
         min_iter=min_iter,
         curve_trajectory=curve_trajectory,
         times_train=times_train,
         times_val=times_val,
+        times_test=times_test,
         degree=degree,
         tol=tol,
     )
@@ -519,7 +562,7 @@ def know_m_find_best_a(
 
 def find_best_am(
     curve_trajectory,
-    init_a=0.2,
+    a_init=0.2,
     m_grid=None,
     percent_train=0.4,
     percent_val=0.35,
@@ -563,7 +606,7 @@ def find_best_am(
             times_train=times_train,
             times_val=times_val,
             times_test=times_test,
-            init_a=init_a,
+            a_init=a_init,
             a_lr=a_lr,
         )
 
@@ -615,10 +658,10 @@ def find_best_am(
 
     best_am = gs.stack([last_as_for_i_m[best_i_m], ms[best_i_m]], axis=-1)
 
-    best_r2_val = r2_val[best_i_m]
-    r2_srv_val_at_best_r2_val = r2_srv_val[best_i_m]
-    r2_test_at_best_r2_val = r2_test[best_i_m]
-    r2_srv_test_at_best_r2_val = r2_srv_test[best_i_m]
+    best_r2_val = r2_val_for_i_m[best_i_m]
+    r2_srv_val_at_best_r2_val = r2_srv_val_for_i_m[best_i_m]
+    r2_test_at_best_r2_val = r2_test_for_i_m[best_i_m]
+    r2_srv_test_at_best_r2_val = r2_srv_test_for_i_m[best_i_m]
 
     print(
         "\n========> ACROSS DEGREES: Values corresponding to best R2:\n"

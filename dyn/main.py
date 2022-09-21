@@ -108,9 +108,6 @@ def run_wandb(
         f"{dataset_name}_at{a_true}_ai{a_init}_mt{m_true}_"
         + f"nt{n_times}_nsp{n_sampling_points}_nv{noise_var}_{default_config.now}"
     )
-    logging.info(f"Starting run {default_config.run_name}")  # noqa: E501
-
-    print(f"Dataset choice is {dataset_name}")
 
     wandb.init(
         project="metric_learning",
@@ -152,7 +149,7 @@ def run_wandb(
         r2_srv_test_at_best_r2_val,
         iteration_histories_for_i_m,
     ) = optimize_am.find_best_am(
-        trajectory_data, init_a=config.a_init, m_grid=config.m_grid, a_lr=config.a_lr
+        trajectory_data, a_init=config.a_init, m_grid=config.m_grid, a_lr=config.a_lr
     )
 
     logging.info("--->>> Save results in wandb and local saved_figs directory.")
@@ -255,7 +252,7 @@ def run_wandb(
 
     fig.suptitle(
         "Optimization a, m gives: "
-        f"a = {best_a:.3f}, m = {best_m}, r2_val = {best_r2_val:.3f}\n"
+        f"a = {best_a:.3f}, m = {best_m}, r2_val = {best_r2_val:.3f}\t"
         f"Evaluation:"
         f"r2_test = {r2_test_at_best_r2_val:.3f}, r2_srv_test = {r2_srv_test_at_best_r2_val}"  # noqa: E501
     )
@@ -286,7 +283,7 @@ run_tests()
 #         "m_grid": default_config.m_grid,
 #         "a_optimization": default_config.a_optimization,
 #         "a_lr": default_config.a_lr,
-#         "init_a": default_config.init_a,
+#         "a_init": default_config.a_init,
 #         "start_cell":default_config.start_cell,
 #         "end_cell":default_config.end_cell
 #     },
@@ -314,15 +311,15 @@ run_tests()
 # # print(f"The shape of one_trajectory is: {one_trajectory.shape}")
 
 # # if config.a_initialization == "close_to_ground_truth":
-# #     init_a = config.a_true - 0.2
+# #     a_init = config.a_true - 0.2
 # # elif config.a_initialization == "random":
-# #     init_a = 0.5
+# #     a_init = 0.5
 # # else:
 # #     raise NotImplementedError()
 
 # logging.info("Find best a and m corresponding to the trajectory.")
 # best_a, best_m, best_r2, r2, r2_srv, r2_test, r2_srv_test, iteration_histories = optimize_am.find_best_am( # noqa: E501
-#     trajectory_data, init_a=config.init_a, m_grid=config.m_grid, a_lr=config.a_lr
+#     trajectory_data, a_init=config.a_init, m_grid=config.m_grid, a_lr=config.a_lr
 # )
 
 # logging.info("--->>> Save results in wandb and local saved_figs directory.")
@@ -460,15 +457,15 @@ run_tests()
 # print(f"The shape of one_trajectory is: {one_trajectory.shape}")
 
 # if config.a_initialization == "close_to_ground_truth":
-#     init_a = config.a_true - 0.2
+#     a_init = config.a_true - 0.2
 # elif config.a_initialization == "random":
-#     init_a = 0.5
+#     a_init = 0.5
 # else:
 #     raise NotImplementedError()
 
 # logging.info("Find best a and m corresponding to the trajectory.")
 # best_a, best_m, best_r2, r2, r2_srv, iteration_histories = optimize_am.find_best_am(
-#     one_trajectory, init_a=init_a, m_grid=config.m_grid, a_lr=config.a_lr
+#     one_trajectory, a_init=a_init, m_grid=config.m_grid, a_lr=config.a_lr
 # )
 
 # logging.info("--->>> Save results in wandb and local saved_figs directory.")

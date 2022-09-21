@@ -18,7 +18,7 @@ noise_var = [0.0]
 
 # Learning
 a_optimization = "gradient"
-a_lr = 0.1
+a_lr = 0.4
 a_init_diff = [-0.2, 0.2]
 
 # loading cells
