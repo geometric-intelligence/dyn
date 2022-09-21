@@ -238,11 +238,19 @@ def run_wandb(
                     linestyle="--",
                 )
 
-                axs[i_plot].axhline(hval, c="black")
-                axs[i_plot].set_ylim(
-                    min(iteration_histories_for_i_m[0][plot_name + "_val"]),
-                    max(iteration_histories_for_i_m[0][plot_name + "_val"]),
+                iteration_history = iteration_histories_for_i_m[i_m][
+                    plot_name + "_test"
+                ]
+                iterations = np.arange(0, len(iteration_history))
+                axs[i_plot].plot(
+                    iterations,
+                    iteration_history,
+                    label=f"m = {m} (test)",
+                    c=f"C{m-1}",
+                    linestyle="-.",
                 )
+
+                axs[i_plot].axhline(hval, c="black")
 
         axs[i_plot].set_xlabel("Iterations")
         axs[i_plot].set_title(plot_name)
