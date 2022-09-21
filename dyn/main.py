@@ -27,24 +27,36 @@ test_sampling_points = [50]  # 10, 50, 100]
 test_noise_vars = [0.0, 0.1]
 test_n_times = [40]
 
+# dataset = 'cells'
+dataset = "circles"
+
 
 def run_tests():
     """Run wandb with different input parameters and tests."""
-    index_array = np.array([0, 10])
     default_n_sampling_points = 200
     default_noise_var = 0
     default_n_times = 20
-    quotient = ["scaling", "rotation"]
-    (
-        cells,
-        cell_shapes,
-        labels_a,
-        labels_b,
-    ) = experimental.load_unrandomized_treated_osteosarcoma_cells(
-        index_array, n_sampling_points=default_n_sampling_points, quotient=quotient
-    )
-    default_start_cell = cell_shapes[0]
-    default_end_cell = cell_shapes[1]
+    if dataset == "cells":
+        index_array = np.array([0, 10])
+        quotient = ["scaling", "rotation"]
+        (
+            cells,
+            cell_shapes,
+            labels_a,
+            labels_b,
+        ) = experimental.load_unrandomized_treated_osteosarcoma_cells(
+            index_array, n_sampling_points=default_n_sampling_points, quotient=quotient
+        )
+        default_start_cell = cell_shapes[0]
+        default_end_cell = cell_shapes[1]
+
+    if dataset == "circles":
+        circle_trajectory = synthetic.geodesics_circle_to_ellipse(
+            n_geodesics=1, n_times=2, n_points=200
+        )
+        circle_trajectory = circle_trajectory[0]
+        default_start_cell = circle_trajectory[0]
+        default_end_cell = circle_trajectory[1]
 
     # here, generate a list of random #'s between .1 and 5
     diffs = [0, 0.2, 0.5]
@@ -72,18 +84,26 @@ def run_tests():
                         default_end_cell,
                     )
             for test_n_sampling_points in test_sampling_points:
-                (
-                    cells,
-                    cell_shapes,
-                    labels_a,
-                    labels_b,
-                ) = experimental.load_unrandomized_treated_osteosarcoma_cells(
-                    index_array,
-                    n_sampling_points=test_n_sampling_points,
-                    quotient=quotient,
-                )
-                test_start_cell = cell_shapes[0]
-                test_end_cell = cell_shapes[1]
+                if dataset == "cells":
+                    (
+                        cells,
+                        cell_shapes,
+                        labels_a,
+                        labels_b,
+                    ) = experimental.load_unrandomized_treated_osteosarcoma_cells(
+                        index_array,
+                        n_sampling_points=test_n_sampling_points,
+                        quotient=quotient,
+                    )
+                    test_start_cell = cell_shapes[0]
+                    test_end_cell = cell_shapes[1]
+                if dataset == "circles":
+                    circle_trajectory = synthetic.geodesics_circle_to_ellipse(
+                        n_geodesics=1, n_times=2, n_points=test_n_sampling_points
+                    )
+                    circle_trajectory = circle_trajectory[0]
+                    test_start_cell = circle_trajectory[0]
+                    test_end_cell = circle_trajectory[1]
                 for init_a in a_inits:
                     run_wandb(
                         a_tr,
@@ -102,6 +122,8 @@ def run_wandb(
 ):
     """Run wandb script for the following parameters."""
     logging.info(f"Starting run {default_config.run_name}")  # noqa: E501
+
+    print(f"Dataset choice is {dataset}")
 
     wandb.init(
         project="metric_learning",
@@ -243,6 +265,10 @@ def run_wandb(
                 axs[i_plot].plot(
                     iterations, iteration_history, label=f"m = {m}", c=f"C{m-1}"
                 )
+                axs[i_plot].set_ylim(
+                    min(iteration_histories[0][plot_name]),
+                    max(iteration_histories[0][plot_name]),
+                )
 
             elif plot_name in ["mse", "r2"]:
                 hval = 0 if plot_name == "mse" else 1
@@ -266,8 +292,14 @@ def run_wandb(
                 )
 
                 axs[i_plot].axhline(hval, c="black")
+                axs[i_plot].set_ylim(
+                    min(iteration_histories[0][plot_name + "_val"]),
+                    max(iteration_histories[0][plot_name + "_val"]),
+                )
+
         axs[i_plot].set_xlabel("Iterations")
         axs[i_plot].set_title(plot_name)
+
         axs[i_plot].legend()
 
     fig.suptitle(
