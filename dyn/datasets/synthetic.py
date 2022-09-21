@@ -224,9 +224,7 @@ def geodesics_circle_to_ellipse(
     return geodesics
 
 
-def geodesic_between_curves(
-    start_curve, end_curve, a, b, degree=1, n_times=20, noise_var=0
-):
+def geodesic_between_curves(start_curve, end_curve, a, b=0.5, n_times=20, noise_var=0):
     """Generate a trajectory between two real cell curves.
 
     Process used:
@@ -249,48 +247,34 @@ def geodesic_between_curves(
     noise_var is the width of the normal distribution from which the random
     value is taken.
     """
-    #     CLOSED_CURVES_SPACE = ClosedDiscreteCurves(R2)
-
     elastic_metric = ElasticMetric(a, b, ambient_manifold=R2)
 
-    q_start = elastic_metric.f_transform(start_curve)
-    q_end = elastic_metric.f_transform(end_curve)
+    start_q = elastic_metric.f_transform(start_curve)
+    end_q = elastic_metric.f_transform(end_curve)
 
     times = gs.arange(0, n_times, 1)
+    assert times.shape == ((n_times,))
     print(times.shape)
 
     q_trajectory = []
     for time in times:
-        q_trajectory.append(time * q_start + (1 - time) * q_end)
+        q_at_time = time / (n_times - 1) * start_q + (1 - time / (n_times - 1)) * end_q
+        q_trajectory.append(q_at_time)
 
     q_trajectory = np.array(q_trajectory)
-
+    assert q_trajectory.shape == (n_times, start_q.shape[0], 2), q_trajectory.shape
     print(q_trajectory.shape)
 
     q_trajectory = torch.from_numpy(q_trajectory)
-
     starting_point_array = gs.zeros((n_times, 2))
+    curve_trajectory = elastic_metric.f_transform_inverse(
+        q_trajectory, starting_point_array
+    )
+    noisy_curve_trajectory = curve_trajectory + np.random.normal(
+        loc=0, scale=noise_var, size=curve_trajectory.shape
+    )
 
-    curves = elastic_metric.f_transform_inverse(q_trajectory, starting_point_array)
-
-    #     closed_curves = CLOSED_CURVES_SPACE.projection(curves)
-
-    #     print('shape of curves:'+str(curves.shape))
-    if noise_var == 0.0:
-        return curves
-    else:
-        noise_curves = np.zeros([len(curves), len(curves[0]), 2])
-        for i_curve, curve in enumerate(curves):
-            for i_point, point in enumerate(curve):
-                noise_curves[i_curve][i_point][0] = np.random.normal(
-                    point[0], noise_var
-                )
-                noise_curves[i_curve][i_point][1] = np.random.normal(
-                    point[1], noise_var
-                )
-
-        #         print('shape of noise_curves:'+str(noise_curves.shape))
-        return noise_curves
+    return noisy_curve_trajectory
 
 
 # def trajectory_between_curves_regression(

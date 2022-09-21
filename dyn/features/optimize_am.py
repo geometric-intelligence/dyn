@@ -287,7 +287,7 @@ def d_var(curve_trajectory, elastic_metric, times_val, a):
     return 2 * d_var_sum
 
 
-def r_squared_gradient(curve_trajectory, times_train, times_val, degree, a):
+def r_squared_gradient(curve_trajectory, times_train, times_val, m, a):
     """Compute the derivative of the r^2 function w.r.t. a.
 
     We are using the r^2 function as our "loss" function.
@@ -307,11 +307,11 @@ def r_squared_gradient(curve_trajectory, times_train, times_val, degree, a):
         elastic_metric=elastic_metric,
         times_train=times_train,
         times_val=times_val,
-        degree=degree,
+        degree=m,
         a=a,
     )
     d_fit_variation = d_mse(
-        curve_trajectory, elastic_metric, times_train, times_val, degree, a
+        curve_trajectory, elastic_metric, times_train, times_val, m, a
     )
     total_variation = var(curve_trajectory, elastic_metric, times_val, a)
     d_total_variation = d_var(curve_trajectory, elastic_metric, times_val, a)
@@ -320,19 +320,15 @@ def r_squared_gradient(curve_trajectory, times_train, times_val, degree, a):
         d_fit_variation * total_variation - fit_variation * d_total_variation
     ) / total_variation**2
 
+    r2_train = r_squared(curve_trajectory, times_train, times_train, m, a)
+    r2_val = r_squared(curve_trajectory, times_train, times_val, m, a)
+    mse_train = mse(curve_trajectory, elastic_metric, times_train, times_train, m, a)
+    mse_val = fit_variation
+
     print(
-        "a: "
-        + str(a)
-        + " r2_val: "
-        + str(r_squared(curve_trajectory, times_train, times_val, degree, a))
-        + " mse_val: "
-        + str(fit_variation)
-        + " var_val: "
-        + str(total_variation)
-        + " mse_train: "
-        + str(
-            mse(curve_trajectory, elastic_metric, times_train, times_train, degree, a)
-        )
+        f"a: {a:.3f}, r2_train: {r2_train:.3f}, r2_val: {r2_val:.3f}, "
+        f"mse_train: {mse_train:.3f}, mse_val: {mse_val:.3f}, "
+        f"total_variation: {total_variation:.3f}"
     )
 
     return gradient
@@ -495,7 +491,9 @@ def r_squared(curve_trajectory, times_train, times_val, degree, a):
     return 1 - fit_variation / total_variation
 
 
-def know_m_find_best_a(curve_trajectory, degree, times_train, times_val, init_a, a_lr):
+def know_m_find_best_a(
+    curve_trajectory, degree, times_train, times_val, times_test, init_a, a_lr
+):
     """Use a gradient search to find best a, for a given m.
 
     This function takes a trajectory and a degree and then uses gradient
@@ -532,15 +530,15 @@ def find_best_am(
     Use a grid search on m and a gradient search on a to find the best pairs of (m,a).
     Then, choose the pair that maximizes R2.
     """
-    if m_grid is None:
-        # want to start with degree of 1 because that is a line, which is a geodesic
-        ms = gs.arange(1, 4)
-    else:
-        ms = gs.array(m_grid)
-    r2_val = -gs.ones([len(ms)])
-    r2_srv_val = -gs.ones([len(ms)])
-    best_as = -gs.ones([len(ms)])
-    iteration_histories = {}
+    # want to start with degree of 1 because that is a line, which is a geodesic
+    ms = gs.arange(1, 4) if m_grid is None else gs.array(m_grid)
+
+    last_as_for_i_m = -gs.ones([len(ms)])
+    r2_val_for_i_m = -gs.ones([len(ms)])
+    r2_srv_val_for_i_m = -gs.ones([len(ms)])
+    r2_test_for_i_m = -gs.ones([len(ms)])
+    r2_srv_test_for_i_m = -gs.ones([len(ms)])
+    iteration_histories_for_i_m = {}
 
     n_times = len(curve_trajectory)
     times = gs.arange(0, n_times, 1)
@@ -559,62 +557,84 @@ def find_best_am(
     print(times_test)
 
     for i_m, degree in enumerate(ms):
-        best_a, iteration_history = know_m_find_best_a(
-            curve_trajectory, degree, times_train, times_val, init_a, a_lr
+        last_a, iteration_history = know_m_find_best_a(
+            curve_trajectory=curve_trajectory,
+            degree=degree,
+            times_train=times_train,
+            times_val=times_val,
+            times_test=times_test,
+            init_a=init_a,
+            a_lr=a_lr,
         )
-        best_as[i_m] = best_a
-        iteration_histories[i_m] = iteration_history
 
-        r2_val[i_m] = r_squared(
-            curve_trajectory, times_train, times_val, degree, best_as[i_m]
+        r2_val = r_squared(
+            curve_trajectory=curve_trajectory,
+            times_train=times_train,
+            times_val=times_val,
+            degree=degree,
+            a=last_a,
+        )
+        r2_srv_val = r_squared(
+            curve_trajectory=curve_trajectory,
+            times_train=times_train,
+            times_val=times_val,
+            degree=1,
+            a=1,
+        )
+        r2_test = r_squared(
+            curve_trajectory=curve_trajectory,
+            times_train=times_train,
+            times_val=times_test,
+            degree=degree,
+            a=last_a,
+        )
+        r2_srv_test = r_squared(
+            curve_trajectory=curve_trajectory,
+            times_train=times_train,
+            times_val=times_test,
+            degree=1,
+            a=1,
         )
 
-        r2_srv_val[i_m] = r_squared(curve_trajectory, times_train, times_val, 1, 1)
         print(
-            "---> DEGREE: "
-            + str(degree)
-            + "; BEST A: "
-            + str(best_as[i_m])
-            + ";R2_val: "
-            + str(r2_val[i_m])
-            + " ; R2_SRV_val: "
-            + str(r2_srv_val[i_m])
-            + "\n"
+            f"--> DEGREE: {degree}; last_a: {last_a:.3f};"
+            f" r2_val: {r2_val:.3f}; r2_srv_val: {r2_srv_val:.3f}"
+            f" r2_test: {r2_test:.3f}; r2_srv_test: {r2_srv_test:.3f}"
         )
+
+        last_as_for_i_m[i_m] = last_a
+        iteration_histories_for_i_m[i_m] = iteration_history
+        r2_val_for_i_m[i_m] = r2_val
+        r2_srv_val_for_i_m[i_m] = r2_srv_val
+        r2_test_for_i_m[i_m] = r2_test
+        r2_srv_test_for_i_m[i_m] = r2_srv_test
 
     # r2 is the best when it is closest to +1.
-    min_diff = 100
-    i_best_r2 = 100
-    for i_r2 in range(len(r2_val)):
-        diff = r2_val[i_r2] - 1
-        if abs(diff) < min_diff:
-            min_diff = abs(r2_val[i_r2] - 1)
-            i_best_r2 = i_r2
+    r2_val_diff_with_1 = gs.abs(r2_val_for_i_m - 1)
+    best_i_m = gs.argmin(r2_val_diff_with_1)
 
-    best_am = gs.stack([best_as[i_best_r2], ms[i_best_r2]], axis=-1)
+    best_am = gs.stack([last_as_for_i_m[best_i_m], ms[best_i_m]], axis=-1)
 
-    r2_test = r_squared(
-        curve_trajectory, times_train, times_test, int(best_am[1]), int(best_am[0])
-    )
-    r2_srv_test = r_squared(curve_trajectory, times_train, times_test, 1, 1)
+    best_r2_val = r2_val[best_i_m]
+    r2_srv_val_at_best_r2_val = r2_srv_val[best_i_m]
+    r2_test_at_best_r2_val = r2_test[best_i_m]
+    r2_srv_test_at_best_r2_val = r2_srv_test[best_i_m]
 
     print(
-        "best_a: "
-        + str(best_am[0])
-        + " best_m: "
-        + str(best_am[1])
-        + " r2_test: "
-        + str(r2_test)
-        + " r2_SRV_test: "
-        + str(r2_srv_test)
+        "\n========> ACROSS DEGREES: Values corresponding to best R2:\n"
+        f"best_a: {best_am[0]:.3f}\n"
+        f"best_m: {best_am[1]:.3f}\n"
+        f"best_r2_val: {best_r2_val:.3f}\n"
+        f"r2_srv_val_at_best_r2_val: {r2_srv_val_at_best_r2_val:.3f}\n"
+        f"r2_test_at_best_r2_val: {r2_test_at_best_r2_val:.3f}\n"
+        f"r2_srv_test_at_best_r2_val: {r2_srv_test_at_best_r2_val:.3f}"
     )
     return (
         best_am[0],
         best_am[1],
-        r2_val[i_best_r2],
-        r2_val,
-        r2_srv_val,
-        r2_test,
-        r2_srv_test,
-        iteration_histories,
+        best_r2_val,
+        r2_srv_val_at_best_r2_val,
+        r2_test_at_best_r2_val,
+        r2_srv_test_at_best_r2_val,
+        iteration_histories_for_i_m,
     )
