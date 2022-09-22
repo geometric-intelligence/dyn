@@ -397,14 +397,14 @@ def gradient_descent(
     ]
     var_steps = [var(curve_trajectory, elastic_metric, times_val, a_init)]
 
-    for i in range(max_iter):
-        a = a_steps[-1]
-        a -= a_lr * r_squared_gradient(
-            curve_trajectory, times_train, times_val, degree, a
-        )
-        a_steps.append(a)
+    # for i in range(max_iter):
+    #     a = a_steps[-1]
+    #     a -= a_lr * r_squared_gradient(
+    #         curve_trajectory, times_train, times_val, degree, a
+    #     )
+    #     a_steps.append(a)
 
-        elastic_metric = ElasticMetric
+    #     elastic_metric = ElasticMetric
 
     a = a_init
 
@@ -534,7 +534,7 @@ def r_squared(curve_trajectory, times_train, times_val, degree, a):
 
 
 def know_m_find_best_a(
-    curve_trajectory, degree, times_train, times_val, times_test, a_init, a_lr
+    curve_trajectory, degree, times_train, times_val, times_test, a_init, a_lr, max_iter
 ):
     """Use a gradient search to find best a, for a given m.
 
@@ -542,10 +542,9 @@ def know_m_find_best_a(
     descent to find out which value of a minimizes the mean squared error
     (MSE) function.
     """
-    max_iter = 20
     min_iter = 3
     tol = 0.001
-    print(f"DEGREE {degree}: Gradient descent on a for R2 val:")
+    print(f"DEGREE {degree}: Gradient ascent on R2 val wrt a:")
     return gradient_descent(
         a_init=a_init,
         a_lr=a_lr,
@@ -567,6 +566,7 @@ def find_best_am(
     percent_train=0.4,
     percent_val=0.35,
     a_lr=0.1,
+    max_iter=20,
 ):
     """For a given geodesic, find the (m,a) pair that maximizes R2.
 
@@ -608,6 +608,7 @@ def find_best_am(
             times_test=times_test,
             a_init=a_init,
             a_lr=a_lr,
+            max_iter=max_iter,
         )
 
         r2_val = r_squared(

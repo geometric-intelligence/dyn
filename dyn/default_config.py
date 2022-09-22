@@ -14,12 +14,13 @@ m_true = [1]
 
 n_sampling_points = [50]
 n_times = [25]
-noise_var = [0.0]
+noise_var = [0.01]
 
 # Learning
 a_optimization = "gradient"
-a_lr = 0.4
-a_init_diff = [-0.2, 0.2]
+a_lr = 0.2
+a_init_diff = [0.2]
+max_iter = 20
 
 # loading cells
 cells, lines, treatments = data_utils.load_cells()

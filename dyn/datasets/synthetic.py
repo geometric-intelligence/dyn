@@ -274,7 +274,7 @@ def geodesic_between_curves(start_curve, end_curve, a, b=0.5, n_times=20, noise_
         loc=0, scale=noise_var, size=curve_trajectory.shape
     )
 
-    return noisy_curve_trajectory
+    return curve_trajectory, noisy_curve_trajectory
 
 
 # def trajectory_between_curves_regression(
