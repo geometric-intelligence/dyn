@@ -281,6 +281,114 @@ def load_treated_osteosarcoma_cells(
     )
 
 
+def unrandomized_preprocess(
+    cells,
+    labels_a,
+    labels_b,
+    cell_indices,
+    n_sampling_points,
+    quotient=["scaling", "rotation"],
+):
+    """Preprocess a dataset of cells.
+
+    Parameters
+    ----------
+    cells : list of all cells
+        Each cell is an array of points in 2D.
+    labels_a : list of str
+        List of labels associated with each cell.
+    labels_b : list of str
+        List of labels associated with each cell.
+    n_cells : int
+        Number of cells to (NOT randomly) select from this dataset.
+    n_sampling_points : int
+        Number of sampling points along the boundary of each cell.
+    """
+    if len(cell_indices) < 1:
+        print("List is empty")
+    else:
+        print(f"... Selecting cell {cell_indices[0]} and cell {cell_indices[0]}")
+        cells = [cells[idx] for idx in cell_indices]
+        labels_a = [labels_a[idx] for idx in cell_indices]
+        labels_b = [labels_b[idx] for idx in cell_indices]
+
+    if n_sampling_points > 0:
+        print(
+            "... Interpolating: "
+            f"Cell boundaries have {n_sampling_points} samplings points."
+        )
+        interpolated_cells = gs.zeros((len(cells), n_sampling_points, 2))
+        for i_cell, cell in enumerate(cells):
+            interpolated_cells[i_cell] = _interpolate(cell, n_sampling_points)
+
+        cells = interpolated_cells
+
+    print("... Removing potential duplicate sampling points on cell boundaries.")
+    for i_cell, cell in enumerate(cells):
+        cells[i_cell] = _remove_consecutive_duplicates(cell)
+
+    print("\n- Cells: quotienting translation.")
+    cells = cells - gs.mean(cells, axis=-2)[..., None, :]
+
+    cell_shapes = gs.zeros_like(cells)
+    if "scaling" in quotient:
+        print("- Cell shapes: quotienting scaling (length).")
+        for i_cell, cell in enumerate(cells):
+            cell_shapes[i_cell] = cell / basic.perimeter(cell)
+
+    if "rotation" in quotient:
+        print("- Cell shapes: quotienting rotation.")
+        if "scaling" not in quotient:
+            for i_cell, cell_shape in enumerate(cells):
+                cell_shapes[i_cell] = _exhaustive_align(cell_shape, cells[0])
+        else:
+            for i_cell, cell_shape in enumerate(cell_shapes):
+                cell_shapes[i_cell] = _exhaustive_align(cell_shape, cell_shapes[0])
+
+    return cells, cell_shapes, labels_a, labels_b
+
+
+def load_unrandomized_treated_osteosarcoma_cells(
+    cell_indices, n_sampling_points=10, quotient=["scaling", "rotation"]
+):
+    """Load dataset of osteosarcoma cells (bone cancer cells).
+
+    This cell dataset contains cell boundaries of mouse osteosarcoma
+    (bone cancer) cells. The dlm8 cell line is derived from dunn and is more
+    aggressive as a cancer. The cells have been treated with one of three
+    treatments : control (no treatment), jasp (jasplakinolide)
+    and cytd (cytochalasin D). These are drugs which perturb the cytoskelet
+    of the cells.
+
+    Parameters
+    ----------
+    n_sampling_points : int
+        Number of points used to interpolate each cell boundary.
+        Optional, Default: 0.
+        If equal to 0, then no interpolation is performed.
+
+    Returns
+    -------
+    cells : array of n_cells planar discrete curves
+        Each curve represents the boundary of a cell in counterclockwise order.
+        Their barycenters are fixed at 0 (translation has been removed).
+        Their lengths are not necessarily equal (scaling has not been removed).
+    cell_shapes : array of n_cells planar discrete curves shapes
+        Each curve represents the boundary of a cell in counterclockwise order.
+        Their barycenters are fixed at 0 (translation has been removed).
+        Their lengths are fixed at 1 (scaling has been removed).
+        They are aligned in rotation to the first cell (rotation has been removed).
+    lines : list of n_cells strings
+        List of the cell lines of each cell (dlm8 or dunn).
+    treatments : list of n_cells strings
+        List of the treatments given to each cell (control, cytd or jasp).
+    """
+    cells, lines, treatments = data_utils.load_cells()
+    return unrandomized_preprocess(
+        cells, lines, treatments, cell_indices, n_sampling_points, quotient=quotient
+    )
+
+
 def load_mutated_retinal_cells(
     n_cells=-1, n_sampling_points=10, quotient=["scaling", "rotation"]
 ):

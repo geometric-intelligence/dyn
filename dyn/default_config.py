@@ -1,29 +1,39 @@
 """Default configuration for a run."""
-
 import logging
 from datetime import datetime
+
+import geomstats.datasets.utils as data_utils
 
 # Can be replaced by logging.DEBUG or logging.WARNING
 logging.basicConfig(level=logging.INFO)
 
 # Dataset
-dataset_name = (
-    "synthetic_circle_to_ellipse"  # can be replaced later on with "experimental"
-)
-a_true = 1.0
-m_true = 1
+dataset_name = ["circles"]
+a_true = [0.2, 0.5, 0.8]
+m_true = [1]
 
-n_sampling_points = 50
-n_times = 25
-noise_var = 0.0
+n_sampling_points = [15, 30]
+n_times = [20, 50, 100]
+noise_std = [0.0, 0.001, 0.01]
 
 # Learning
-a_initialization = "close_to_ground_truth"
-a_optimization = "gradient"
-a_lr = 0.1
+percent_train = 0.6
+percent_val = 0.3
 
-m_grid = [1, 2, 3]
+a_optimization = "sgd"  # "adam"
+a_lr = 0.2  # default for adam: 0.001
+a_init_diff = [0.2, -0.2]
+max_iter = 30
+tol = 0.001
+
+# loading cells
+cells, lines, treatments = data_utils.load_cells()
+start_cell = cells[0]
+end_cell = cells[1]
+quotient = ["scaling", "rotation"]
+
+# m's
+m_grid = [1]  # , 2, 3]
 
 # Run name in wandb
 now = str(datetime.now().replace(second=0, microsecond=0).strftime("%m%d-%H:%M:%S"))
-run_name = f"{now}_{dataset_name}"

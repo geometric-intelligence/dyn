@@ -63,7 +63,7 @@ def test_mse():
     one_trajectory = curve_trajectories[0]
     elastic_metric = elastic_metric
     result = optimize_am.mse(
-        curve_trajectory=one_trajectory,
+        trajectory=one_trajectory,
         elastic_metric=elastic_metric,
         times_train=times_train,
         times_val=times_val,

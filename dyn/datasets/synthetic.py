@@ -2,13 +2,22 @@
 
 import geomstats.backend as gs
 import numpy as np
-from geomstats.geometry.discrete_curves import R2, DiscreteCurves
+import torch
+from geomstats.geometry.discrete_curves import (  # , ClosedDiscreteCurves
+    R2,
+    DiscreteCurves,
+    ElasticMetric,
+)
+
+# from sklearn.linear_model import LinearRegression
+# from sklearn.preprocessing import PolynomialFeatures
 
 CURVES_SPACE = DiscreteCurves(R2)
 METRIC = CURVES_SPACE.srv_metric
-#uncomment code below if you want to create geodesics with synthetic data using elastic metric
-#CURVES_SPACE = DiscreteCurves(R2, a=1,b=10000)
-#METRIC = CURVES_SPACE.elastic_metric
+# uncomment code below if you want to create geodesics with synthetic data
+# using elastic metric
+# CURVES_SPACE = DiscreteCurves(R2, a=1,b=10000)
+# METRIC = CURVES_SPACE.elastic_metric
 
 
 def rectangle(n_points_height, n_points_length, height, length, protusion=0):
@@ -38,15 +47,17 @@ def rectangle(n_points_height, n_points_length, height, length, protusion=0):
     left = gs.vstack((minus_lengths, height_neg_axis)).T[:-1]
 
     rectangle[: n_points_length - 1] = bottom
-    rectangle[n_points_length - 1 : n_points_length + n_points_height - 2] = right
+    rectangle[
+        n_points_length - 1 : n_points_length + n_points_height - 2  # noqa: E203
+    ] = right  # noqa: E203
     rectangle[
         n_points_length
         + n_points_height
-        - 2 : 2 * n_points_length
+        - 2 : 2 * n_points_length  # noqa: E203
         + n_points_height
         - 3
     ] = top
-    rectangle[2 * n_points_length + n_points_height - 3 :] = left
+    rectangle[2 * n_points_length + n_points_height - 3 :] = left  # noqa: E203
 
     return rectangle
 
@@ -207,7 +218,108 @@ def geodesics_circle_to_ellipse(
             b=b[i_geodesic],
             protusion_height=protusion_height,
         )
-        geodesic = METRIC.geodesic(initial_curve=start_circle, end_curve=end_ellipse)
+        geodesic = METRIC.geodesic(start_circle, end_ellipse)
         geodesics[i_geodesic] = geodesic(times)
 
     return geodesics
+
+
+def geodesic_between_curves(start_curve, end_curve, a, b=0.5, n_times=20, noise_std=0):
+    """Generate a trajectory between two real cell curves.
+
+    Process used:
+    - This notebook takes an input curve and and end curve
+    - It then uses an f-transform to put these curves in a linear "q-space"
+    - It draws a geodesic between these two curves in "q-space" (a line).
+    - q = t * q1 + (1-t) * q2 is used to draw lines between points.
+    - It samples from this geodesic in q-space.
+    - Then, it transforms curves back into curve space using the inverese f
+        transform.
+
+    NOTE: the output curves will have the same number of sampling points as
+    the input curves.
+
+    parameters:
+    -----------
+    noise_std: this is the level of noise that we want introduced into the
+    trajectory. If noise_std > 0, then for each point, the code will move
+    the x coordinate and the y coordinate a random amount, based on this value.
+    noise_std is the width of the normal distribution from which the random
+    value is taken.
+    """
+    elastic_metric = ElasticMetric(a, b, ambient_manifold=R2)
+
+    start_q = elastic_metric.f_transform(start_curve)
+    end_q = elastic_metric.f_transform(end_curve)
+
+    times = gs.arange(0, n_times, 1)
+    assert times.shape == ((n_times,))
+    print(times.shape)
+
+    noiseless_q_traj = []
+    for time in times:
+        q_at_time = time / (n_times - 1) * start_q + (1 - time / (n_times - 1)) * end_q
+        noiseless_q_traj.append(q_at_time)
+
+    noiseless_q_traj = np.array(noiseless_q_traj)
+    assert noiseless_q_traj.shape == (
+        n_times,
+        start_q.shape[0],
+        2,
+    ), noiseless_q_traj.shape
+    print(noiseless_q_traj.shape)
+
+    noiseless_q_traj = torch.from_numpy(noiseless_q_traj)
+    starting_point_array = gs.zeros((n_times, 2))
+    noiseless_curve_traj = elastic_metric.f_transform_inverse(
+        noiseless_q_traj, starting_point_array
+    )
+    curve_traj = noiseless_curve_traj + np.random.normal(
+        loc=0, scale=noise_std, size=noiseless_curve_traj.shape
+    )
+
+    q_traj = elastic_metric.f_transform(curve_traj)
+
+    return noiseless_curve_traj, curve_traj, noiseless_q_traj, q_traj
+
+
+# def trajectory_between_curves_regression(
+#     start_curve, end_curve, a, b, degree=1, n_times=20, n_points=40
+# ):
+#     """Generate a synthetic trajectory between cells using regression.
+
+#     Process used:
+#     - This notebook takes an input curve and and end curve
+#     - It then uses an f-transform to put these curves in a linear "q-space"
+#     - It draws a geodesic between these two curves in "q-space" (a line).
+#     - q = t * q1 + (1-t) * q2 is used to draw lines between points.
+#     - It samples from this geodesic in q-space.
+#     - Then, it transforms curves back into curve space using the inverese f
+#         transform.
+#     """
+#     elastic_metric = ElasticMetric(a, b, ambient_manifold=R2)
+
+#     q = elastic_metric.f_transform(gs.stack([start_curve,end_curve], axis = -1))
+
+#     q_vector = q.reshape((2, -1))
+
+#     times = gs.arange(0, n_times, 1)
+#     times = np.reshape(times, (n_times, 1))
+
+#     x = np.reshape(np.array([0, n_times-1]), (2, 1))
+#     y = q_vector
+
+#     polynomial_features = PolynomialFeatures(degree=degree)
+#     x_poly = polynomial_features.fit_transform(x)
+
+#     model = LinearRegression()
+#     model.fit(x_poly, y)
+#     y_poly_pred = model.predict(x_poly)
+
+#     q_trajectory = torch.from_numpy(y_poly_pred)
+
+#     starting_point_array = gs.zeros((len(q_trajectory), 2))
+
+#     curves = elastic_metric.f_transform_inverse(q_trajectory, starting_point_array)
+
+#     return curves
