@@ -172,10 +172,10 @@ def run_wandb(
         best_a,
         best_m,
         best_r2_val,
-        r2_srv_val_at_best_r2_val,
-        r2_test_at_best_r2_val,
-        r2_srv_test_at_best_r2_val,
-        iteration_histories_for_i_m,
+        r2_test_at_best,
+        baseline_r2_srv_val,
+        baseline_r2_srv_test,
+        iteration_histories_per_i_m,
     ) = optimize_am.find_best_am(
         trajectory=trajectory,
         times_train=times_train,
@@ -187,7 +187,6 @@ def run_wandb(
         max_iter=config.max_iter,
         tol=config.tol,
     )
-
     logging.info("--->>> Save results in wandb and local saved_figs directory.")
 
     logging.info("1. Save the config locally.")
@@ -197,12 +196,12 @@ def run_wandb(
     logging.info("2. Save iteration histories during gradient descent.")
 
     for i_m, m in enumerate(config.m_grid):
-        a_steps = iteration_histories_for_i_m[i_m]["a"]
-        mse_train_steps = iteration_histories_for_i_m[i_m]["mse_train"]
-        mse_val_steps = iteration_histories_for_i_m[i_m]["mse_val"]
+        a_steps = iteration_histories_per_i_m[i_m]["a"]
+        mse_train_steps = iteration_histories_per_i_m[i_m]["mse_train"]
+        mse_val_steps = iteration_histories_per_i_m[i_m]["mse_val"]
 
-        r2_train_steps = iteration_histories_for_i_m[i_m]["r2_train"]
-        r2_val_steps = iteration_histories_for_i_m[i_m]["r2_val"]
+        r2_train_steps = iteration_histories_per_i_m[i_m]["r2_train"]
+        r2_val_steps = iteration_histories_per_i_m[i_m]["r2_val"]
 
         iteration_history_df = pd.DataFrame(
             columns=["a", "mse_train", "mse_val", "r2_train", "r2_val"],
@@ -231,7 +230,7 @@ def run_wandb(
         wandb.log({table_key: wandb.Table(dataframe=iteration_history_df)})
 
     fig = viz.plot_summary_wandb(
-        iteration_histories_for_i_m=iteration_histories_for_i_m,
+        iteration_histories_for_i_m=iteration_histories_per_i_m,
         config=config,
         noiseless_curve_traj=noiseless_curve_traj,
         curve_traj=curve_traj,
@@ -242,9 +241,9 @@ def run_wandb(
         best_a=best_a,
         best_m=best_m,
         best_r2_val=best_r2_val,
-        r2_srv_val_at_best_r2_val=r2_srv_val_at_best_r2_val,
-        r2_test_at_best_r2_val=r2_test_at_best_r2_val,
-        r2_srv_test_at_best_r2_val=r2_srv_test_at_best_r2_val,
+        r2_test_at_best=r2_test_at_best,
+        baseline_r2_srv_val=baseline_r2_srv_val,
+        baseline_r2_srv_test=baseline_r2_srv_test,
     )
 
     fig.savefig(f"saved_figs/optimize_am/{config.run_name}_summary.png")

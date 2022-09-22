@@ -13,7 +13,7 @@ a_true = [1.0]
 m_true = [1]
 
 n_sampling_points = [50]
-n_times = [25]
+n_times = [60]
 noise_std = [0.001]
 
 # Learning
@@ -23,7 +23,7 @@ percent_val = 0.3
 a_optimization = "gradient"
 a_lr = 0.2
 a_init_diff = [-0.2]
-max_iter = 20
+max_iter = 30
 tol = 0.001
 
 # loading cells

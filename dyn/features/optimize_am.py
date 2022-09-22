@@ -370,65 +370,70 @@ def gradient_descent(
     mse_test_steps = [
         mse(trajectory, elastic_metric, times_train, times_test, degree, a_init)
     ]
-    total_var_steps = [var(trajectory, elastic_metric, times_val, a_init)]
 
     a = a_init
 
-    for i_iter in range(max_iter):
+    for iter in range(max_iter):
         if a >= 0:
             diff = a_lr * r_squared_gradient(
                 trajectory, times_train, times_val, degree, a
             )
-            if np.abs(diff) < tol and i_iter > min_iter:
+            if np.abs(diff) < tol and iter > min_iter:
                 break
-            if a - diff < 0 and i_iter > min_iter:
+            if a - diff < 0 and iter > min_iter:
                 break
             a = a - diff
 
-            # History tracking
-            elastic_metric = ElasticMetric(a, b=0.5, ambient_manifold=R2)
+            # History tracking:
+            # Only track every 5 iterations for efficiency
+            if iter % 5 == 0 or iter == max_iter - 1:
+                elastic_metric = ElasticMetric(a, b=0.5, ambient_manifold=R2)
 
-            r2_train = r_squared(trajectory, times_train, times_train, degree, a)
-            r2_val = r_squared(trajectory, times_train, times_val, degree, a)
-            r2_test = r_squared(trajectory, times_train, times_test, degree, a)
-            mse_train = mse(
-                trajectory, elastic_metric, times_train, times_train, degree, a
-            )
-            mse_val = mse(trajectory, elastic_metric, times_train, times_val, degree, a)
-            mse_test = mse(
-                trajectory, elastic_metric, times_train, times_test, degree, a
-            )
-            total_var = var(trajectory, elastic_metric, times_val, a)
+                r2_train = r_squared(trajectory, times_train, times_train, degree, a)
+                r2_val = r_squared(trajectory, times_train, times_val, degree, a)
+                r2_test = r_squared(trajectory, times_train, times_test, degree, a)
+                mse_train = mse(
+                    trajectory, elastic_metric, times_train, times_train, degree, a
+                )
+                mse_val = mse(
+                    trajectory, elastic_metric, times_train, times_val, degree, a
+                )
+                mse_test = mse(
+                    trajectory, elastic_metric, times_train, times_test, degree, a
+                )
 
-            print(
-                f"a: {a:.3f}, r2_train: {r2_train:.3f}, r2_val: {r2_val:.3f}, "
-                f"mse_train: {mse_train:.3f}, mse_val: {mse_val:.3f}, "
-                f"total_var: {total_var:.3f}"
-            )
+                print(
+                    f"i_iter: {iter}/{max_iter}, a: {a:.3f}\n"
+                    f"   r2_train: {r2_train:.3f}, r2_val*: {r2_val:.3f}, r2_test: {r2_test:.3f}\n"  # noqa: E501
+                    f"   mse_train: {mse_train:.3f}, mse_val: {mse_val:.3f}, mse_test: {mse_test:.3f}"  # noqa: E501
+                )
 
-            a_steps.append(a)
-            r2_train_steps.append(r2_train)
-            r2_val_steps.append(r2_val)
-            r2_test_steps.append(r2_test)
-            mse_train_steps.append(mse_train)
-            mse_val_steps.append(mse_val)
-            mse_test_steps.append(mse_test)
-            total_var_steps.append(total_var)
+                a_steps.append(a)
+                r2_train_steps.append(r2_train)
+                r2_val_steps.append(r2_val)
+                r2_test_steps.append(r2_test)
+                mse_train_steps.append(mse_train)
+                mse_val_steps.append(mse_val)
+                mse_test_steps.append(mse_test)
 
-            wandb.log(
-                {
-                    "i_iter": i_iter,
-                    "a": a,
-                    "r2_train": r2_train,
-                    "r2_val": r2_val,
-                    "r2_test": r2_test,
-                    "mse_train": mse_train,
-                    "mse_val": mse_val,
-                    "mse_test": mse_test,
-                    "total_var": total_var,
-                },
-                step=i_iter,
-            )
+                wandb.log(
+                    {
+                        "a": a,
+                        "train": {
+                            "r2_train": r2_train,
+                            "mse_train": mse_train,
+                        },
+                        "val": {
+                            "r2_val": r2_val,
+                            "mse_val": mse_val,
+                        },
+                        "test": {
+                            "r2_test": r2_test,
+                            "mse_test": mse_test,
+                        },
+                    },
+                    step=iter,
+                )
 
     iteration_history = {}
     iteration_history["a"] = a_steps
@@ -438,7 +443,6 @@ def gradient_descent(
     iteration_history["mse_train"] = mse_train_steps
     iteration_history["mse_val"] = mse_val_steps
     iteration_history["mse_test"] = mse_test_steps
-    iteration_history["total_var"] = total_var_steps
     return a, iteration_history
 
 
@@ -489,12 +493,7 @@ def find_best_am(
     # want to start with degree of 1 because that is a line, which is a geodesic
     ms = gs.arange(1, 4) if m_grid is None else gs.array(m_grid)
 
-    last_as_for_i_m = -gs.ones([len(ms)])
-    r2_val_for_i_m = -gs.ones([len(ms)])
-    r2_srv_val_for_i_m = -gs.ones([len(ms)])
-    r2_test_for_i_m = -gs.ones([len(ms)])
-    r2_srv_test_for_i_m = -gs.ones([len(ms)])
-    iteration_histories_for_i_m = {}
+    iteration_histories_per_i_m = {}
 
     for i_m, degree in enumerate(ms):
         last_a, iteration_history = know_m_find_best_a(
@@ -509,74 +508,46 @@ def find_best_am(
             tol=tol,
         )
 
-        r2_val = r_squared(
-            trajectory=trajectory,
-            times_train=times_train,
-            times_val=times_val,
-            degree=degree,
-            a=last_a,
-        )
-        r2_srv_val = r_squared(
-            trajectory=trajectory,
-            times_train=times_train,
-            times_val=times_val,
-            degree=1,
-            a=1,
-        )
-        r2_test = r_squared(
-            trajectory=trajectory,
-            times_train=times_train,
-            times_val=times_test,
-            degree=degree,
-            a=last_a,
-        )
-        r2_srv_test = r_squared(
-            trajectory=trajectory,
-            times_train=times_train,
-            times_val=times_test,
-            degree=1,
-            a=1,
-        )
+        r2_val = iteration_history["r2_val"][-1]
+        r2_test = iteration_history["r2_test"][-1]
 
         print(
             f"--> DEGREE: {degree}; last_a: {last_a:.3f};"
-            f" r2_val: {r2_val:.3f}; r2_srv_val: {r2_srv_val:.3f}"
-            f" r2_test: {r2_test:.3f}; r2_srv_test: {r2_srv_test:.3f}"
+            f" r2_val: {r2_val:.3f}; r2_test: {r2_test:.3f};"
         )
 
-        last_as_for_i_m[i_m] = last_a
-        iteration_histories_for_i_m[i_m] = iteration_history
-        r2_val_for_i_m[i_m] = r2_val
-        r2_srv_val_for_i_m[i_m] = r2_srv_val
-        r2_test_for_i_m[i_m] = r2_test
-        r2_srv_test_for_i_m[i_m] = r2_srv_test
+        iteration_histories_per_i_m[i_m] = iteration_history
 
     # r2 is the best when it is closest to +1.
-    r2_val_diff_with_1 = gs.abs(r2_val_for_i_m - 1)
+    r2_val_per_i_m = iteration_histories_per_i_m[i_m]["r2_val"]
+    r2_val_diff_with_1 = gs.abs(r2_val_per_i_m - 1)
     best_i_m = gs.argmin(r2_val_diff_with_1)
 
-    best_am = gs.stack([last_as_for_i_m[best_i_m], ms[best_i_m]], axis=-1)
+    best_a = iteration_histories_per_i_m[best_i_m]["a"]
+    best_m = ms[best_i_m]
 
-    best_r2_val = r2_val_for_i_m[best_i_m]
-    r2_srv_val_at_best_r2_val = r2_srv_val_for_i_m[best_i_m]
-    r2_test_at_best_r2_val = r2_test_for_i_m[best_i_m]
-    r2_srv_test_at_best_r2_val = r2_srv_test_for_i_m[best_i_m]
+    best_r2_val = iteration_histories_per_i_m[best_i_m]["r2_val"]
+    r2_test_at_best = iteration_histories_per_i_m[best_i_m]["r2_test"]
+
+    # Comparison with baseline: geodesic (m=1) and default srv (a=1)
+    baseline_r2_srv_val = r_squared(trajectory, times_train, times_val, degree=1, a=1)
+    baseline_r2_srv_test = r_squared(trajectory, times_train, times_test, degree=1, a=1)
 
     print(
         "\n========> ACROSS DEGREES: Values corresponding to best R2:\n"
-        f"best_a: {best_am[0]:.3f}\n"
-        f"best_m: {best_am[1]:.3f}\n"
+        f"best_a: {best_a:.3f}\n"
+        f"best_m: {best_m:.3f}\n"
         f"best_r2_val: {best_r2_val:.3f}\n"
-        f"r2_srv_val_at_best_r2_val: {r2_srv_val_at_best_r2_val:.3f}\n"
-        f"r2_test_at_best_r2_val: {r2_test_at_best_r2_val:.3f}\n"
-        f"r2_srv_test_at_best_r2_val: {r2_srv_test_at_best_r2_val:.3f}"
+        f"r2_test_at_best: {r2_test_at_best:.3f}\n"
+        f"compare with: r2_srv_val: {baseline_r2_srv_val:.3f}\n"
+        f"compare with: r2_srv_test: {baseline_r2_srv_test:.3f}\n"
     )
     return (
-        best_am[0],
-        best_am[1],
+        best_a,
+        best_m,
         best_r2_val,
-        r2_srv_val_at_best_r2_val,
-        r2_test_at_best_r2_val,
-        r2_srv_test_at_best_r2_val,
-        iteration_histories_for_i_m,
+        r2_test_at_best,
+        baseline_r2_srv_val,
+        baseline_r2_srv_test,
+        iteration_histories_per_i_m,
     )

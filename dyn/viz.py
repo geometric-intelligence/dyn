@@ -33,9 +33,9 @@ def plot_summary_wandb(
     best_a,
     best_m,
     best_r2_val,
-    r2_srv_val_at_best_r2_val,
-    r2_test_at_best_r2_val,
-    r2_srv_test_at_best_r2_val,
+    r2_test_at_best,
+    baseline_r2_srv_val,
+    baseline_r2_srv_test,
 ):
     """Save the master figure in wandb."""
     a_true = config.a_true
@@ -60,7 +60,8 @@ def plot_summary_wandb(
         "test": "-.",
     }
 
-    factor = 2
+    # We can only see ~10 curves given the size of the plot
+    factor = n_times // 10  # --> n_times // factor = 10
     fig = plt.figure(figsize=(20, 16), constrained_layout=True)
 
     gs = fig.add_gridspec(
@@ -136,8 +137,9 @@ def plot_summary_wandb(
         "Optimization a, m gives: "
         f"a = {best_a:.3f}, m = {best_m}, r2_val = {best_r2_val:.3f}  ---  "
         f"Evaluation: "
-        f"r2_test = {r2_test_at_best_r2_val:.3f}, "
-        f"r2_srv_test = {r2_srv_test_at_best_r2_val:.3f}",  # noqa: E501
+        f"r2_test = {r2_test_at_best:.3f}, "
+        f"baseline_r2_srv_val = {baseline_r2_srv_val:.3f}",  # noqa: E501
+        f"baseline_r2_srv_test = {baseline_r2_srv_test:.3f}",  # noqa: E501
         fontsize=18,
     )
 
@@ -157,7 +159,10 @@ def plot_summary_wandb(
             curve_ax.set_ylabel("Validation", fontsize=18)
             noiseless_q_ax.set_ylabel("Validation", fontsize=18)
             q_ax.set_ylabel("Validation", fontsize=18)
-        elif factor * i_time >= n_train and factor * i_time < n_train + n_val + factor:
+        elif (
+            factor * i_time >= n_train + n_val
+            and factor * i_time < n_train + n_val + factor
+        ):
             noiseless_curve_ax.set_ylabel("Test", fontsize=18)
             curve_ax.set_ylabel("Test", fontsize=18)
             noiseless_q_ax.set_ylabel("Test", fontsize=18)
