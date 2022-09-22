@@ -6,6 +6,12 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
+LINESTYLE_DICT = {
+    "train": "-",
+    "val": "--",
+    "test": "-.",
+}
+
 
 def init_matplotlib():
     """Configure style for matplotlib tutorial."""
@@ -21,8 +27,50 @@ def init_matplotlib():
     )
 
 
+def plot_a_steps(axs, i_plot, i_m, m, iteration_histories_per_i_m):
+    """Plot a steps."""
+    iteration_history = iteration_histories_per_i_m[i_m]["a"]
+    iterations = np.arange(0, len(iteration_history))
+
+    axs[i_plot].plot(iterations, iteration_history, label=f"m = {m}", c=f"C{m}")
+    return axs
+
+
+def plot_mse_or_r2_steps(axs, i_plot, i_m, m, iteration_histories_per_i_m, plot_name):
+    """Plot mse or r2 steps."""
+    iteration_history = iteration_histories_per_i_m[i_m][plot_name + "_train"]
+    iterations = np.arange(0, len(iteration_history))
+    axs[i_plot].plot(
+        iterations,
+        iteration_history,
+        label=f"m = {m} (train)",
+        c=f"C{m}",
+        linestyle=LINESTYLE_DICT["train"],
+    )
+    iteration_history = iteration_histories_per_i_m[i_m][plot_name + "_val"]
+    iterations = np.arange(0, len(iteration_history))
+    axs[i_plot].plot(
+        iterations,
+        iteration_history,
+        label=f"m = {m} (val)",
+        c=f"C{m}",
+        linestyle=LINESTYLE_DICT["val"],
+    )
+
+    iteration_history = iteration_histories_per_i_m[i_m][plot_name + "_test"]
+    iterations = np.arange(0, len(iteration_history))
+    axs[i_plot].plot(
+        iterations,
+        iteration_history,
+        label=f"m = {m} (test)",
+        c=f"C{m}",
+        linestyle=LINESTYLE_DICT["test"],
+    )
+    return axs
+
+
 def plot_summary_wandb(
-    iteration_histories_for_i_m,
+    iteration_histories_per_i_m,
     config,
     noiseless_curve_traj,
     curve_traj,
@@ -48,17 +96,6 @@ def plot_summary_wandb(
     #     "mse": (0, 1),
     #     "r2": (-3, 1.1),
     # }
-    plot_name_to_h_val = {
-        "a": a_true,
-        "mse": 0,
-        "r2": 1,
-    }
-
-    linestyle_dict = {
-        "train": "-",
-        "val": "--",
-        "test": "-.",
-    }
 
     # We can only see ~10 curves given the size of the plot
     factor = n_times // 10  # --> n_times // factor = 10
@@ -77,55 +114,17 @@ def plot_summary_wandb(
     axs = [ax_a, ax_mse, ax_r2]
 
     for i_plot, plot_name in enumerate(["a", "mse", "r2"]):
-        if plot_name == "a":
-            axs[i_plot].axhline(
-                config.a_true, label=f"a_true = {config.a_true}", c="black"
-            )
         for i_m, m in enumerate(config.m_grid):
             if plot_name == "a":
-                iteration_history = iteration_histories_for_i_m[i_m][plot_name]
-                iterations = np.arange(0, len(iteration_history))
-
-                axs[i_plot].plot(
-                    iterations, iteration_history, label=f"m = {m}", c=f"C{m}"
-                )
+                axs = plot_a_steps(axs, i_plot, i_m, m, iteration_histories_per_i_m)
 
             elif plot_name in ["mse", "r2"]:
-                iteration_history = iteration_histories_for_i_m[i_m][
-                    plot_name + "_train"
-                ]
-                iterations = np.arange(0, len(iteration_history))
-                axs[i_plot].plot(
-                    iterations,
-                    iteration_history,
-                    label=f"m = {m} (train)",
-                    c=f"C{m}",
-                    linestyle=linestyle_dict["train"],
-                )
-                iteration_history = iteration_histories_for_i_m[i_m][plot_name + "_val"]
-                iterations = np.arange(0, len(iteration_history))
-                axs[i_plot].plot(
-                    iterations,
-                    iteration_history,
-                    label=f"m = {m} (val)",
-                    c=f"C{m}",
-                    linestyle=linestyle_dict["val"],
+                axs = plot_mse_or_r2_steps(
+                    axs, i_plot, i_m, m, iteration_histories_per_i_m, plot_name
                 )
 
-                iteration_history = iteration_histories_for_i_m[i_m][
-                    plot_name + "_test"
-                ]
-                iterations = np.arange(0, len(iteration_history))
-                axs[i_plot].plot(
-                    iterations,
-                    iteration_history,
-                    label=f"m = {m} (test)",
-                    c=f"C{m}",
-                    linestyle=linestyle_dict["test"],
-                )
-
-                axs[i_plot].axhline(plot_name_to_h_val[plot_name], c="black")
-
+        plot_name_to_h_val = {"a": config.a_true, "mse": 0, "r2": 1}
+        axs[i_plot].axhline(plot_name_to_h_val[plot_name], c="black")
         axs[i_plot].set_xlabel("Iterations")
         axs[i_plot].set_title(plot_name)
         # axs[i_plot].set_ylim(plot_name_to_ylim[plot_name])
@@ -134,11 +133,11 @@ def plot_summary_wandb(
 
     plt.suptitle(
         f"Ground truth: a_true = {a_true}, m_true = {m_true}  ---  "
-        "Optimization a, m gives: "
+        f"Optimizing ({config.a_optimization}) a, m gives: "
         f"a = {best_a:.3f}, m = {best_m}, r2_val = {best_r2_val:.3f}  ---  "
         f"Evaluation: "
         f"r2_test = {r2_test_at_best:.3f}, "
-        f"baseline_r2_srv_val = {baseline_r2_srv_val:.3f}"  # noqa: E501
+        f"baseline_r2_srv_val = {baseline_r2_srv_val:.3f}, "  # noqa: E501
         f"baseline_r2_srv_test = {baseline_r2_srv_test:.3f}",  # noqa: E501
         fontsize=18,
     )

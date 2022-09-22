@@ -230,7 +230,7 @@ def run_wandb(
         wandb.log({table_key: wandb.Table(dataframe=iteration_history_df)})
 
     fig = viz.plot_summary_wandb(
-        iteration_histories_for_i_m=iteration_histories_per_i_m,
+        iteration_histories_per_i_m=iteration_histories_per_i_m,
         config=config,
         noiseless_curve_traj=noiseless_curve_traj,
         curve_traj=curve_traj,
