@@ -14,7 +14,7 @@ m_true = [1]
 
 n_sampling_points = [50]
 n_times = [25]
-noise_var = [0.001]
+noise_std = [0.001]
 
 # Learning
 percent_train = 0.6

@@ -224,7 +224,7 @@ def geodesics_circle_to_ellipse(
     return geodesics
 
 
-def geodesic_between_curves(start_curve, end_curve, a, b=0.5, n_times=20, noise_var=0):
+def geodesic_between_curves(start_curve, end_curve, a, b=0.5, n_times=20, noise_std=0):
     """Generate a trajectory between two real cell curves.
 
     Process used:
@@ -241,10 +241,10 @@ def geodesic_between_curves(start_curve, end_curve, a, b=0.5, n_times=20, noise_
 
     parameters:
     -----------
-    noise_var: this is the level of noise that we want introduced into the
-    trajectory. If noise_var > 0, then for each point, the code will move
+    noise_std: this is the level of noise that we want introduced into the
+    trajectory. If noise_std > 0, then for each point, the code will move
     the x coordinate and the y coordinate a random amount, based on this value.
-    noise_var is the width of the normal distribution from which the random
+    noise_std is the width of the normal distribution from which the random
     value is taken.
     """
     elastic_metric = ElasticMetric(a, b, ambient_manifold=R2)
@@ -275,7 +275,7 @@ def geodesic_between_curves(start_curve, end_curve, a, b=0.5, n_times=20, noise_
         noiseless_q_traj, starting_point_array
     )
     curve_traj = noiseless_curve_traj + np.random.normal(
-        loc=0, scale=noise_var, size=noiseless_curve_traj.shape
+        loc=0, scale=noise_std, size=noiseless_curve_traj.shape
     )
 
     q_traj = elastic_metric.f_transform(curve_traj)

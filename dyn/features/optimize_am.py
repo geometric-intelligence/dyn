@@ -12,6 +12,7 @@ import os
 
 import geomstats.backend as gs
 import numpy as np
+import wandb
 from geomstats.geometry.discrete_curves import R2, ElasticMetric
 
 os.environ["GEOMSTATS_BACKEND"] = "pytorch"
@@ -283,6 +284,24 @@ def d_var(trajectory, elastic_metric, times_val, a):
     return 2 * d_var_sum
 
 
+def r_squared(trajectory, times_train, times_val, degree, a):
+    """Compute r squared."""
+    b = 0.5
+    elastic_metric = ElasticMetric(a, b, ambient_manifold=R2)
+
+    fit_variation = mse(
+        trajectory=trajectory,
+        elastic_metric=elastic_metric,
+        times_train=times_train,
+        times_val=times_val,
+        degree=degree,
+        a=a,
+    )
+    total_variation = var(trajectory, elastic_metric, times_val, a)
+
+    return 1 - fit_variation / total_variation
+
+
 def r_squared_gradient(trajectory, times_train, times_val, m, a):
     """Compute the derivative of the r^2 function w.r.t. a.
 
@@ -314,19 +333,6 @@ def r_squared_gradient(trajectory, times_train, times_val, m, a):
         d_fit_variation * total_variation - fit_variation * d_total_variation
     ) / total_variation**2
 
-    # Note: it would be better to have these prints outside of this function
-    # because they are not directly related to the computation of the gradient
-    r2_train = r_squared(trajectory, times_train, times_train, m, a)
-    r2_val = r_squared(trajectory, times_train, times_val, m, a)
-    mse_train = mse(trajectory, elastic_metric, times_train, times_train, m, a)
-    mse_val = fit_variation
-
-    print(
-        f"a: {a:.3f}, r2_train: {r2_train:.3f}, r2_val: {r2_val:.3f}, "
-        f"mse_train: {mse_train:.3f}, mse_val: {mse_val:.3f}, "
-        f"total_variation: {total_variation:.3f}"
-    )
-
     return gradient
 
 
@@ -349,50 +355,27 @@ def gradient_descent(
 
     sample function also returns steps. we could do that if we want to debug.
     """
-    a_steps = [a_init]  # history tracking
     elastic_metric = ElasticMetric(a_init, 0.5, ambient_manifold=R2)
 
+    a_steps = [a_init]
     r2_train_steps = [r_squared(trajectory, times_train, times_train, degree, a_init)]
     r2_val_steps = [r_squared(trajectory, times_train, times_val, degree, a_init)]
     r2_test_steps = [r_squared(trajectory, times_train, times_test, degree, a_init)]
     mse_train_steps = [
-        mse(
-            trajectory=trajectory,
-            elastic_metric=elastic_metric,
-            times_train=times_train,
-            times_val=times_train,
-            degree=degree,
-            a=a_init,
-        )
+        mse(trajectory, elastic_metric, times_train, times_train, degree, a_init)
     ]
     mse_val_steps = [
-        mse(
-            trajectory=trajectory,
-            elastic_metric=elastic_metric,
-            times_train=times_train,
-            times_val=times_val,
-            degree=degree,
-            a=a_init,
-        )
+        mse(trajectory, elastic_metric, times_train, times_val, degree, a_init)
     ]
     mse_test_steps = [
-        mse(
-            trajectory=trajectory,
-            elastic_metric=elastic_metric,
-            times_train=times_train,
-            times_val=times_test,
-            degree=degree,
-            a=a_init,
-        )
+        mse(trajectory, elastic_metric, times_train, times_test, degree, a_init)
     ]
-    var_steps = [var(trajectory, elastic_metric, times_val, a_init)]
+    total_var_steps = [var(trajectory, elastic_metric, times_val, a_init)]
 
     a = a_init
 
     for i_iter in range(max_iter):
         if a >= 0:
-            # gradient must be a function of a.
-
             diff = a_lr * r_squared_gradient(
                 trajectory, times_train, times_val, degree, a
             )
@@ -403,50 +386,49 @@ def gradient_descent(
             a = a - diff
 
             # History tracking
+            elastic_metric = ElasticMetric(a, b=0.5, ambient_manifold=R2)
+
+            r2_train = r_squared(trajectory, times_train, times_train, degree, a)
+            r2_val = r_squared(trajectory, times_train, times_val, degree, a)
+            r2_test = r_squared(trajectory, times_train, times_test, degree, a)
+            mse_train = mse(
+                trajectory, elastic_metric, times_train, times_train, degree, a
+            )
+            mse_val = mse(trajectory, elastic_metric, times_train, times_val, degree, a)
+            mse_test = mse(
+                trajectory, elastic_metric, times_train, times_test, degree, a
+            )
+            total_var = var(trajectory, elastic_metric, times_val, a)
+
+            print(
+                f"a: {a:.3f}, r2_train: {r2_train:.3f}, r2_val: {r2_val:.3f}, "
+                f"mse_train: {mse_train:.3f}, mse_val: {mse_val:.3f}, "
+                f"total_var: {total_var:.3f}"
+            )
+
             a_steps.append(a)
-            elastic_metric = ElasticMetric(a, 0.5, ambient_manifold=R2)
+            r2_train_steps.append(r2_train)
+            r2_val_steps.append(r2_val)
+            r2_test_steps.append(r2_test)
+            mse_train_steps.append(mse_train)
+            mse_val_steps.append(mse_val)
+            mse_test_steps.append(mse_test)
+            total_var_steps.append(total_var)
 
-            r2_train_steps.append(
-                r_squared(trajectory, times_train, times_train, degree, a)
+            wandb.log(
+                {
+                    "i_iter": i_iter,
+                    "a": a,
+                    "r2_train": r2_train,
+                    "r2_val": r2_val,
+                    "r2_test": r2_test,
+                    "mse_train": mse_train,
+                    "mse_val": mse_val,
+                    "mse_test": mse_test,
+                    "total_var": total_var,
+                },
+                step=i_iter,
             )
-            r2_val_steps.append(
-                r_squared(trajectory, times_train, times_val, degree, a)
-            )
-            r2_test_steps.append(
-                r_squared(trajectory, times_train, times_test, degree, a)
-            )
-
-            mse_train_steps.append(
-                mse(
-                    trajectory=trajectory,
-                    elastic_metric=elastic_metric,
-                    times_train=times_train,
-                    times_val=times_train,
-                    degree=degree,
-                    a=a,
-                )
-            )
-            mse_val_steps.append(
-                mse(
-                    trajectory=trajectory,
-                    elastic_metric=elastic_metric,
-                    times_train=times_train,
-                    times_val=times_val,
-                    degree=degree,
-                    a=a,
-                )
-            )
-            mse_test_steps.append(
-                mse(
-                    trajectory=trajectory,
-                    elastic_metric=elastic_metric,
-                    times_train=times_train,
-                    times_val=times_test,
-                    degree=degree,
-                    a=a,
-                )
-            )
-            var_steps.append(var(trajectory, elastic_metric, times_val, a))
 
     iteration_history = {}
     iteration_history["a"] = a_steps
@@ -456,25 +438,8 @@ def gradient_descent(
     iteration_history["mse_train"] = mse_train_steps
     iteration_history["mse_val"] = mse_val_steps
     iteration_history["mse_test"] = mse_test_steps
+    iteration_history["total_var"] = total_var_steps
     return a, iteration_history
-
-
-def r_squared(trajectory, times_train, times_val, degree, a):
-    """Compute r squared."""
-    b = 0.5
-    elastic_metric = ElasticMetric(a, b, ambient_manifold=R2)
-
-    fit_variation = mse(
-        trajectory=trajectory,
-        elastic_metric=elastic_metric,
-        times_train=times_train,
-        times_val=times_val,
-        degree=degree,
-        a=a,
-    )
-    total_variation = var(trajectory, elastic_metric, times_val, a)
-
-    return 1 - fit_variation / total_variation
 
 
 def know_m_find_best_a(

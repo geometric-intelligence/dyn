@@ -41,6 +41,8 @@ def plot_summary_wandb(
     a_true = config.a_true
     m_true = config.m_true
     n_times = config.n_times
+    n_train = len(times_train)
+    n_val = len(times_val)
     # plot_name_to_ylim = {
     #     "a": (0.75, 1.),
     #     "mse": (0, 1),
@@ -58,15 +60,9 @@ def plot_summary_wandb(
         "test": "-.",
     }
 
-    transparency_dict = {
-        "train": 1.0,
-        "val": 0.8,
-        "test": 0.4,
-    }
-
     factor = 2
     fig = plt.figure(figsize=(20, 16), constrained_layout=True)
-    # Take half of n_times to see the curves.
+
     gs = fig.add_gridspec(
         nrows=5, ncols=n_times // factor, height_ratios=[2, 1, 1, 1, 1]
     )
@@ -141,22 +137,12 @@ def plot_summary_wandb(
         f"a = {best_a:.3f}, m = {best_m}, r2_val = {best_r2_val:.3f}  ---  "
         f"Evaluation: "
         f"r2_test = {r2_test_at_best_r2_val:.3f}, "
-        f"r2_srv_test = {r2_srv_test_at_best_r2_val}",  # noqa: E501
+        f"r2_srv_test = {r2_srv_test_at_best_r2_val:.3f}",  # noqa: E501
         fontsize=18,
     )
 
     logging.info("3. Save plots of predicted curves.")
-    for i_time in range(n_times // 2):
-        if factor * i_time <= len(times_train):
-            linestyle = linestyle_dict["train"]
-            transparency = transparency_dict["train"]
-        elif factor * i_time <= len(times_train) + len(times_val):
-            linestyle = linestyle_dict["val"]
-            transparency = transparency_dict["val"]
-        else:
-            linestyle = linestyle_dict["test"]
-            transparency = transparency_dict["test"]
-
+    for i_time in range(n_times // factor):
         noiseless_curve_ax = fig.add_subplot(gs[1, i_time])
         curve_ax = fig.add_subplot(gs[2, i_time])
         noiseless_q_ax = fig.add_subplot(gs[3, i_time])
@@ -166,36 +152,38 @@ def plot_summary_wandb(
             curve_ax.set_ylabel("Noisy curve", fontsize=18)
             noiseless_q_ax.set_ylabel("Noiseless q", fontsize=18)
             q_ax.set_ylabel("Noisy q", fontsize=18)
+        elif factor * i_time >= n_train and factor * i_time < n_train + factor:
+            noiseless_curve_ax.set_ylabel("Validation", fontsize=18)
+            curve_ax.set_ylabel("Validation", fontsize=18)
+            noiseless_q_ax.set_ylabel("Validation", fontsize=18)
+            q_ax.set_ylabel("Validation", fontsize=18)
+        elif factor * i_time >= n_train and factor * i_time < n_train + n_val + factor:
+            noiseless_curve_ax.set_ylabel("Test", fontsize=18)
+            curve_ax.set_ylabel("Test", fontsize=18)
+            noiseless_q_ax.set_ylabel("Test", fontsize=18)
+            q_ax.set_ylabel("Test", fontsize=18)
         noiseless_curve_ax.plot(
             noiseless_curve_traj[factor * i_time][:, 0],
             noiseless_curve_traj[factor * i_time][:, 1],
             marker="o",
             c="C0",
-            linestyle=linestyle,
-            alpha=transparency,
         )
         curve_ax.plot(
             curve_traj[factor * i_time][:, 0],
             curve_traj[factor * i_time][:, 1],
             marker="o",
             c="C1",
-            linestyle=linestyle,
-            alpha=transparency,
         )
         noiseless_q_ax.plot(
             noiseless_q_traj[factor * i_time][:, 0],
             noiseless_q_traj[factor * i_time][:, 1],
             marker="o",
             c="C0",
-            linestyle=linestyle,
-            alpha=transparency,
         )
         q_ax.plot(
             q_traj[factor * i_time][:, 0],
             q_traj[factor * i_time][:, 1],
             marker="o",
             c="C1",
-            linestyle=linestyle,
-            alpha=transparency,
         )
     return fig

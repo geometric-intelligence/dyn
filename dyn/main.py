@@ -36,7 +36,7 @@ def run_tests():
         a_true,
         m_true,
         n_sampling_points,
-        noise_var,
+        noise_std,
         n_times,
         a_init_diff,
     ) in itertools.product(
@@ -44,14 +44,14 @@ def run_tests():
         default_config.a_true,
         default_config.m_true,
         default_config.n_sampling_points,
-        default_config.noise_var,
+        default_config.noise_std,
         default_config.n_times,
         default_config.a_init_diff,
     ):
         logging.info(
             f"Running tests for {dataset_name} with a_true={a_true}, m_true={m_true}:\n"
             f"- n_sampling_points={n_sampling_points}\n"
-            f"- noise_var={noise_var}\n"
+            f"- noise_std={noise_std}\n"
             f"- n_times={n_times}\n"
         )
 
@@ -87,7 +87,7 @@ def run_tests():
             m_true=m_true,
             n_times=n_times,
             n_sampling_points=n_sampling_points,
-            noise_var=noise_var,
+            noise_std=noise_std,
             a_init=a_init,
             start_cell=start_cell,
             end_cell=end_cell,
@@ -100,7 +100,7 @@ def run_wandb(
     m_true,
     n_times,
     n_sampling_points,
-    noise_var,
+    noise_std,
     a_init,
     start_cell,
     end_cell,
@@ -108,7 +108,7 @@ def run_wandb(
     """Run wandb script for the following parameters."""
     run_name = (
         f"{dataset_name}_at{a_true}_ai{a_init}_mt{m_true}_"
-        + f"nt{n_times}_nsp{n_sampling_points}_nv{noise_var}_{default_config.now}"
+        + f"nt{n_times}_nsp{n_sampling_points}_nv{noise_std}_{default_config.now}"
     )
 
     wandb.init(
@@ -119,7 +119,7 @@ def run_wandb(
             "dataset_name": dataset_name,
             "a_true": a_true,
             "m_true": m_true,
-            "noise_var": noise_var,
+            "noise_std": noise_std,
             "n_sampling_points": n_sampling_points,
             "n_times": n_times,
             "percent_train": default_config.percent_train,
@@ -146,7 +146,7 @@ def run_wandb(
         noiseless_q_traj,
         q_traj,
     ) = synthetic.geodesic_between_curves(
-        start_cell, end_cell, a_true, b, n_times, noise_var
+        start_cell, end_cell, a_true, b, n_times, noise_std
     )
     trajectory = curve_traj
     print(f"The shape of the trajectory is: {trajectory.shape}")
