@@ -21,6 +21,7 @@ a_optimization = "gradient"
 a_lr = 0.2
 a_init_diff = [0.2]
 max_iter = 20
+tol = 0.001
 
 # loading cells
 cells, lines, treatments = data_utils.load_cells()

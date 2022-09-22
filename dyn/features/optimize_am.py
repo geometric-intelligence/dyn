@@ -90,7 +90,7 @@ def derivative_q_curve(curve, elastic_metric):
     return der_cartesian
 
 
-def dr_mse_da(i_val, curve_trajectory, elastic_metric, times_train, degree):
+def dr_mse_da(i_val, trajectory, elastic_metric, times_train, degree):
     """Calculate the derivative of r_mse for a given i_val w.r.t. a.
 
     Utilizes f_transform in discrete_curves to calculate
@@ -102,7 +102,7 @@ def dr_mse_da(i_val, curve_trajectory, elastic_metric, times_train, degree):
     -------
     dr_da: the derivative of r_mse w.r.t. a.
     """
-    n_times = len(curve_trajectory)
+    n_times = len(trajectory)
     times = gs.arange(0, n_times, 1)
 
     fit_sum = 0
@@ -110,14 +110,14 @@ def dr_mse_da(i_val, curve_trajectory, elastic_metric, times_train, degree):
 
         fit_sum += tau_sum(
             times_train, degree, i_val, time_train, times
-        ) * derivative_q_curve(curve_trajectory[time_train], elastic_metric)
+        ) * derivative_q_curve(trajectory[time_train], elastic_metric)
 
-    return derivative_q_curve(curve_trajectory[i_val], elastic_metric) - fit_sum
+    return derivative_q_curve(trajectory[i_val], elastic_metric) - fit_sum
 
 
-def r_mse(i_val, curve_trajectory, elastic_metric, times_train, degree):
+def r_mse(i_val, trajectory, elastic_metric, times_train, degree):
     """Calculate r_mse for a given i_val (i.e. a given s parameter)."""
-    n_times = len(curve_trajectory)
+    n_times = len(trajectory)
     times = gs.arange(0, n_times, 1)
 
     fit_sum = 0
@@ -125,12 +125,12 @@ def r_mse(i_val, curve_trajectory, elastic_metric, times_train, degree):
 
         fit_sum += tau_sum(
             times_train, degree, i_val, time_train, times
-        ) * elastic_metric.f_transform(curve_trajectory[time_train])
+        ) * elastic_metric.f_transform(trajectory[time_train])
 
-    return elastic_metric.f_transform(curve_trajectory[i_val]) - fit_sum
+    return elastic_metric.f_transform(trajectory[i_val]) - fit_sum
 
 
-def d_mse(curve_trajectory, elastic_metric, times_train, times_val, degree, a):
+def d_mse(trajectory, elastic_metric, times_train, times_val, degree, a):
     """Compute the derivative of the MSE function w.r.t. a.
 
     TODO:
@@ -152,15 +152,13 @@ def d_mse(curve_trajectory, elastic_metric, times_train, times_val, degree, a):
     dr_da : the derivative of the distance between a q curve and the q curve
         expected from the regression fit
     """
-    n_sampling_points = len(curve_trajectory[0][:, 0])
+    n_sampling_points = len(trajectory[0][:, 0])
 
     d_mse_sum = 0
 
     for time_val in times_val:
-        dr_da = dr_mse_da(
-            time_val, curve_trajectory, elastic_metric, times_train, degree
-        )
-        r = r_mse(time_val, curve_trajectory, elastic_metric, times_train, degree)
+        dr_da = dr_mse_da(time_val, trajectory, elastic_metric, times_train, degree)
+        r = r_mse(time_val, trajectory, elastic_metric, times_train, degree)
 
         rows, cols = dr_da.shape
 
@@ -172,7 +170,7 @@ def d_mse(curve_trajectory, elastic_metric, times_train, times_val, degree, a):
     return 2 * d_mse_sum
 
 
-def mse(curve_trajectory, elastic_metric, times_train, times_val, degree, a):
+def mse(trajectory, elastic_metric, times_train, times_val, degree, a):
     """Compute the mean squared error (MSE) with the given parameters.
 
     Computes the sum of the distances between each datapoint and its
@@ -185,14 +183,14 @@ def mse(curve_trajectory, elastic_metric, times_train, times_val, degree, a):
     dr_da: the derivative of the distance between a q curve and the q curve
         expected from the regression fit
     """
-    n_sampling_points = len(curve_trajectory[0][:, 0])
+    n_sampling_points = len(trajectory[0][:, 0])
 
     mse_sum = 0
 
     for time_val in times_val:
         r = r_mse(
             i_val=time_val,
-            curve_trajectory=curve_trajectory,
+            trajectory=trajectory,
             elastic_metric=elastic_metric,
             times_train=times_train,
             degree=degree,
@@ -217,7 +215,7 @@ def dr_var_da(curve, elastic_metric, d_q_mean):
     return derivative_q_curve(curve, elastic_metric) - d_q_mean
 
 
-def var(curve_trajectory, elastic_metric, times_val, a):
+def var(trajectory, elastic_metric, times_val, a):
     """Compute the total variation of the validation dataset.
 
     computes sum_i_train(norm(q_curve_i - mean_q_curve))
@@ -227,17 +225,17 @@ def var(curve_trajectory, elastic_metric, times_val, a):
     r : is the distance between a q curve and the mean q curve
     dr_da : the derivative of the distance between a q curve and the mean q curve.
     """
-    n_sampling_points = len(curve_trajectory[0][:, 0])
+    n_sampling_points = len(trajectory[0][:, 0])
 
     q_mean = 0
     for time_val in times_val:
-        q_mean += elastic_metric.f_transform(curve_trajectory[time_val])
+        q_mean += elastic_metric.f_transform(trajectory[time_val])
 
     q_mean = q_mean / len(times_val)
 
     var_sum = 0
     for time_val in times_val:
-        r = r_var(curve_trajectory[time_val], elastic_metric, q_mean)
+        r = r_var(trajectory[time_val], elastic_metric, q_mean)
 
         rows, cols = r.shape
 
@@ -248,7 +246,7 @@ def var(curve_trajectory, elastic_metric, times_val, a):
     return var_sum
 
 
-def d_var(curve_trajectory, elastic_metric, times_val, a):
+def d_var(trajectory, elastic_metric, times_val, a):
     """Compute the total variation of the validation dataset w.r.t. a.
 
     computes derivative of sum_i_train(norm(q_curve_i - mean_q_curve))
@@ -258,24 +256,22 @@ def d_var(curve_trajectory, elastic_metric, times_val, a):
     r: is the distance between a q curve and the mean q curve
     dr_da: the derivative of the distance between a q curve and the mean q curve.
     """
-    n_sampling_points = len(curve_trajectory[0][:, 0])
+    n_sampling_points = len(trajectory[0][:, 0])
 
     derivative_q_mean = 0
     for time_val in times_val:
-        derivative_q_mean += derivative_q_curve(
-            curve_trajectory[time_val], elastic_metric
-        )
+        derivative_q_mean += derivative_q_curve(trajectory[time_val], elastic_metric)
     derivative_q_mean = derivative_q_mean / len(times_val)
 
     q_mean = 0
     for time_val in times_val:
-        q_mean += elastic_metric.f_transform(curve_trajectory[time_val])
+        q_mean += elastic_metric.f_transform(trajectory[time_val])
     q_mean = q_mean / len(times_val)
 
     d_var_sum = 0
     for time_val in times_val:
-        dr_da = dr_var_da(curve_trajectory[time_val], elastic_metric, derivative_q_mean)
-        r = r_var(curve_trajectory[time_val], elastic_metric, q_mean)
+        dr_da = dr_var_da(trajectory[time_val], elastic_metric, derivative_q_mean)
+        r = r_var(trajectory[time_val], elastic_metric, q_mean)
 
         rows, cols = dr_da.shape
 
@@ -287,7 +283,7 @@ def d_var(curve_trajectory, elastic_metric, times_val, a):
     return 2 * d_var_sum
 
 
-def r_squared_gradient(curve_trajectory, times_train, times_val, m, a):
+def r_squared_gradient(trajectory, times_train, times_val, m, a):
     """Compute the derivative of the r^2 function w.r.t. a.
 
     We are using the r^2 function as our "loss" function.
@@ -303,18 +299,16 @@ def r_squared_gradient(curve_trajectory, times_train, times_val, m, a):
     elastic_metric = ElasticMetric(a, b, ambient_manifold=R2)
 
     fit_variation = mse(
-        curve_trajectory=curve_trajectory,
+        trajectory=trajectory,
         elastic_metric=elastic_metric,
         times_train=times_train,
         times_val=times_val,
         degree=m,
         a=a,
     )
-    d_fit_variation = d_mse(
-        curve_trajectory, elastic_metric, times_train, times_val, m, a
-    )
-    total_variation = var(curve_trajectory, elastic_metric, times_val, a)
-    d_total_variation = d_var(curve_trajectory, elastic_metric, times_val, a)
+    d_fit_variation = d_mse(trajectory, elastic_metric, times_train, times_val, m, a)
+    total_variation = var(trajectory, elastic_metric, times_val, a)
+    d_total_variation = d_var(trajectory, elastic_metric, times_val, a)
 
     gradient = (
         d_fit_variation * total_variation - fit_variation * d_total_variation
@@ -322,9 +316,9 @@ def r_squared_gradient(curve_trajectory, times_train, times_val, m, a):
 
     # Note: it would be better to have these prints outside of this function
     # because they are not directly related to the computation of the gradient
-    r2_train = r_squared(curve_trajectory, times_train, times_train, m, a)
-    r2_val = r_squared(curve_trajectory, times_train, times_val, m, a)
-    mse_train = mse(curve_trajectory, elastic_metric, times_train, times_train, m, a)
+    r2_train = r_squared(trajectory, times_train, times_train, m, a)
+    r2_val = r_squared(trajectory, times_train, times_val, m, a)
+    mse_train = mse(trajectory, elastic_metric, times_train, times_train, m, a)
     mse_val = fit_variation
 
     print(
@@ -341,12 +335,12 @@ def gradient_descent(
     a_lr,
     max_iter,
     min_iter,
-    curve_trajectory,
+    trajectory,
     times_train,
     times_val,
     times_test,
     degree,
-    tol=0.01,
+    tol,
 ):
     """Calculate minimum x using gradient descent.
 
@@ -358,16 +352,12 @@ def gradient_descent(
     a_steps = [a_init]  # history tracking
     elastic_metric = ElasticMetric(a_init, 0.5, ambient_manifold=R2)
 
-    r2_train_steps = [
-        r_squared(curve_trajectory, times_train, times_train, degree, a_init)
-    ]
-    r2_val_steps = [r_squared(curve_trajectory, times_train, times_val, degree, a_init)]
-    r2_test_steps = [
-        r_squared(curve_trajectory, times_train, times_test, degree, a_init)
-    ]
+    r2_train_steps = [r_squared(trajectory, times_train, times_train, degree, a_init)]
+    r2_val_steps = [r_squared(trajectory, times_train, times_val, degree, a_init)]
+    r2_test_steps = [r_squared(trajectory, times_train, times_test, degree, a_init)]
     mse_train_steps = [
         mse(
-            curve_trajectory=curve_trajectory,
+            trajectory=trajectory,
             elastic_metric=elastic_metric,
             times_train=times_train,
             times_val=times_train,
@@ -377,7 +367,7 @@ def gradient_descent(
     ]
     mse_val_steps = [
         mse(
-            curve_trajectory=curve_trajectory,
+            trajectory=trajectory,
             elastic_metric=elastic_metric,
             times_train=times_train,
             times_val=times_val,
@@ -387,7 +377,7 @@ def gradient_descent(
     ]
     mse_test_steps = [
         mse(
-            curve_trajectory=curve_trajectory,
+            trajectory=trajectory,
             elastic_metric=elastic_metric,
             times_train=times_train,
             times_val=times_test,
@@ -395,16 +385,7 @@ def gradient_descent(
             a=a_init,
         )
     ]
-    var_steps = [var(curve_trajectory, elastic_metric, times_val, a_init)]
-
-    # for i in range(max_iter):
-    #     a = a_steps[-1]
-    #     a -= a_lr * r_squared_gradient(
-    #         curve_trajectory, times_train, times_val, degree, a
-    #     )
-    #     a_steps.append(a)
-
-    #     elastic_metric = ElasticMetric
+    var_steps = [var(trajectory, elastic_metric, times_val, a_init)]
 
     a = a_init
 
@@ -413,7 +394,7 @@ def gradient_descent(
             # gradient must be a function of a.
 
             diff = a_lr * r_squared_gradient(
-                curve_trajectory, times_train, times_val, degree, a
+                trajectory, times_train, times_val, degree, a
             )
             if np.abs(diff) < tol and i_iter > min_iter:
                 break
@@ -426,18 +407,18 @@ def gradient_descent(
             elastic_metric = ElasticMetric(a, 0.5, ambient_manifold=R2)
 
             r2_train_steps.append(
-                r_squared(curve_trajectory, times_train, times_train, degree, a)
+                r_squared(trajectory, times_train, times_train, degree, a)
             )
             r2_val_steps.append(
-                r_squared(curve_trajectory, times_train, times_val, degree, a)
+                r_squared(trajectory, times_train, times_val, degree, a)
             )
             r2_test_steps.append(
-                r_squared(curve_trajectory, times_train, times_test, degree, a)
+                r_squared(trajectory, times_train, times_test, degree, a)
             )
 
             mse_train_steps.append(
                 mse(
-                    curve_trajectory=curve_trajectory,
+                    trajectory=trajectory,
                     elastic_metric=elastic_metric,
                     times_train=times_train,
                     times_val=times_train,
@@ -447,7 +428,7 @@ def gradient_descent(
             )
             mse_val_steps.append(
                 mse(
-                    curve_trajectory=curve_trajectory,
+                    trajectory=trajectory,
                     elastic_metric=elastic_metric,
                     times_train=times_train,
                     times_val=times_val,
@@ -457,7 +438,7 @@ def gradient_descent(
             )
             mse_test_steps.append(
                 mse(
-                    curve_trajectory=curve_trajectory,
+                    trajectory=trajectory,
                     elastic_metric=elastic_metric,
                     times_train=times_train,
                     times_val=times_test,
@@ -465,7 +446,7 @@ def gradient_descent(
                     a=a,
                 )
             )
-            var_steps.append(var(curve_trajectory, elastic_metric, times_val, a))
+            var_steps.append(var(trajectory, elastic_metric, times_val, a))
 
     iteration_history = {}
     iteration_history["a"] = a_steps
@@ -478,63 +459,26 @@ def gradient_descent(
     return a, iteration_history
 
 
-# def gradient_ascent(
-#     a_init,
-#     a_lr,
-#     max_iter,
-#     curve_trajectory,
-#     times_train,
-#     times_val,
-#     degree,
-#     tol=0.01,
-# ):
-#     """Calculate maximum value of r2 using gradient ascent.
-
-#     structure inspiration source:
-#     https://towardsdatascience.com/gradient-descent-algorithm-a-deep-dive-cf04e8115f21
-
-#     sample function also returns steps. we could do that if we want to debug.
-#     """
-#     steps = [a_init]  # history tracking
-#     a = a_init
-
-#     for _ in range(max_iter):
-#         if a >= 0:
-#             # gradient must be a function of a.
-
-#             diff = a_lr * r_squared_gradient(
-#                 curve_trajectory, times_train, times_val, degree, a
-#             )
-#             if np.abs(diff) < tol:
-#                 break
-#             if a + diff < 0:
-#                 break
-#             a = a + diff
-#             steps.append(a)  # history tracing
-
-#     return a
-
-
-def r_squared(curve_trajectory, times_train, times_val, degree, a):
+def r_squared(trajectory, times_train, times_val, degree, a):
     """Compute r squared."""
     b = 0.5
     elastic_metric = ElasticMetric(a, b, ambient_manifold=R2)
 
     fit_variation = mse(
-        curve_trajectory=curve_trajectory,
+        trajectory=trajectory,
         elastic_metric=elastic_metric,
         times_train=times_train,
         times_val=times_val,
         degree=degree,
         a=a,
     )
-    total_variation = var(curve_trajectory, elastic_metric, times_val, a)
+    total_variation = var(trajectory, elastic_metric, times_val, a)
 
     return 1 - fit_variation / total_variation
 
 
 def know_m_find_best_a(
-    curve_trajectory, degree, times_train, times_val, times_test, a_init, a_lr, max_iter
+    trajectory, degree, times_train, times_val, times_test, a_init, a_lr, max_iter, tol
 ):
     """Use a gradient search to find best a, for a given m.
 
@@ -543,14 +487,13 @@ def know_m_find_best_a(
     (MSE) function.
     """
     min_iter = 3
-    tol = 0.001
     print(f"DEGREE {degree}: Gradient ascent on R2 val wrt a:")
     return gradient_descent(
         a_init=a_init,
         a_lr=a_lr,
         max_iter=max_iter,
         min_iter=min_iter,
-        curve_trajectory=curve_trajectory,
+        trajectory=trajectory,
         times_train=times_train,
         times_val=times_val,
         times_test=times_test,
@@ -560,13 +503,14 @@ def know_m_find_best_a(
 
 
 def find_best_am(
-    curve_trajectory,
+    trajectory,
     a_init=0.2,
     m_grid=None,
     percent_train=0.4,
     percent_val=0.35,
     a_lr=0.1,
     max_iter=20,
+    tol=0.01,
 ):
     """For a given geodesic, find the (m,a) pair that maximizes R2.
 
@@ -583,7 +527,7 @@ def find_best_am(
     r2_srv_test_for_i_m = -gs.ones([len(ms)])
     iteration_histories_for_i_m = {}
 
-    n_times = len(curve_trajectory)
+    n_times = len(trajectory)
     times = gs.arange(0, n_times, 1)
 
     print("n_times: " + str(n_times))
@@ -601,7 +545,7 @@ def find_best_am(
 
     for i_m, degree in enumerate(ms):
         last_a, iteration_history = know_m_find_best_a(
-            curve_trajectory=curve_trajectory,
+            trajectory=trajectory,
             degree=degree,
             times_train=times_train,
             times_val=times_val,
@@ -609,31 +553,32 @@ def find_best_am(
             a_init=a_init,
             a_lr=a_lr,
             max_iter=max_iter,
+            tol=tol,
         )
 
         r2_val = r_squared(
-            curve_trajectory=curve_trajectory,
+            trajectory=trajectory,
             times_train=times_train,
             times_val=times_val,
             degree=degree,
             a=last_a,
         )
         r2_srv_val = r_squared(
-            curve_trajectory=curve_trajectory,
+            trajectory=trajectory,
             times_train=times_train,
             times_val=times_val,
             degree=1,
             a=1,
         )
         r2_test = r_squared(
-            curve_trajectory=curve_trajectory,
+            trajectory=trajectory,
             times_train=times_train,
             times_val=times_test,
             degree=degree,
             a=last_a,
         )
         r2_srv_test = r_squared(
-            curve_trajectory=curve_trajectory,
+            trajectory=trajectory,
             times_train=times_train,
             times_val=times_test,
             degree=1,

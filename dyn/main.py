@@ -125,6 +125,7 @@ def run_wandb(
             "a_optimization": default_config.a_optimization,
             "a_lr": default_config.a_lr,
             "max_iter": default_config.max_iter,
+            "tol": default_config.tol,
         },
     )
 
@@ -150,11 +151,12 @@ def run_wandb(
         r2_srv_test_at_best_r2_val,
         iteration_histories_for_i_m,
     ) = optimize_am.find_best_am(
-        trajectory,
+        trajectory=trajectory,
         a_init=config.a_init,
         m_grid=config.m_grid,
         a_lr=config.a_lr,
         max_iter=config.max_iter,
+        tol=config.tol,
     )
 
     logging.info("--->>> Save results in wandb and local saved_figs directory.")
@@ -210,10 +212,12 @@ def run_wandb(
         "r2": 1,
     }
 
-    fig = plt.figure(figsize=(20, 5))
-    ax_a = plt.subplot(3, 3, 1)
-    ax_mse = plt.subplot(3, 3, 2)
-    ax_r2 = plt.subplot(3, 3, 3)
+    fig = plt.figure(figsize=(20, 5), constrained_layout=True)
+    # Take half of n_times to see the curves.
+    gs = fig.add_gridspec(nrows=3, ncols=n_times // 2, height_ratios=[2, 1, 1])
+    ax_a = fig.add_subplot(gs[0, 0 : n_times // 6])  # noqa: E203
+    ax_mse = fig.add_subplot(gs[0, n_times // 6 : 2 * n_times // 6])  # noqa: E203
+    ax_r2 = fig.add_subplot(gs[0, 2 * n_times // 6 : 3 * n_times // 6])  # noqa: E203
     axs = [ax_a, ax_mse, ax_r2]
 
     for i_plot, plot_name in enumerate(["a", "mse", "r2"]):
