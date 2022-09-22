@@ -41,11 +41,11 @@ def plot_summary_wandb(
     a_true = config.a_true
     m_true = config.m_true
     n_times = config.n_times
-    plot_name_to_ylim = {
-        "a": (-0.1, 5),
-        "mse": (-0.1, 1),
-        "r2": (-3, 1.1),
-    }
+    # plot_name_to_ylim = {
+    #     "a": (0.75, 1.),
+    #     "mse": (0, 1),
+    #     "r2": (-3, 1.1),
+    # }
     plot_name_to_h_val = {
         "a": a_true,
         "mse": 0,
@@ -76,7 +76,7 @@ def plot_summary_wandb(
     )
     ax_r2 = fig.add_subplot(
         gs[0, 2 * n_times // (factor * 3) : 3 * n_times // (factor * 3)]  # noqa: E203
-    )  # noqa: E203
+    )
     axs = [ax_a, ax_mse, ax_r2]
 
     for i_plot, plot_name in enumerate(["a", "mse", "r2"]):
@@ -131,7 +131,7 @@ def plot_summary_wandb(
 
         axs[i_plot].set_xlabel("Iterations")
         axs[i_plot].set_title(plot_name)
-        axs[i_plot].set_ylim(plot_name_to_ylim[plot_name])
+        # axs[i_plot].set_ylim(plot_name_to_ylim[plot_name])
 
         axs[i_plot].legend()
 
@@ -142,7 +142,7 @@ def plot_summary_wandb(
         f"Evaluation: "
         f"r2_test = {r2_test_at_best_r2_val:.3f}, "
         f"r2_srv_test = {r2_srv_test_at_best_r2_val}",  # noqa: E501
-        fontsize=16,
+        fontsize=18,
     )
 
     logging.info("3. Save plots of predicted curves.")
@@ -162,10 +162,10 @@ def plot_summary_wandb(
         noiseless_q_ax = fig.add_subplot(gs[3, i_time])
         q_ax = fig.add_subplot(gs[4, i_time])
         if i_time == 0:
-            noiseless_curve_ax.set_ylabel("Noiseless curve")
-            curve_ax.set_ylabel("Noisy curve")
-            noiseless_q_ax.set_ylabel("Noiseless q")
-            q_ax.set_ylabel("Noisy q")
+            noiseless_curve_ax.set_ylabel("Noiseless curve", fontsize=18)
+            curve_ax.set_ylabel("Noisy curve", fontsize=18)
+            noiseless_q_ax.set_ylabel("Noiseless q", fontsize=18)
+            q_ax.set_ylabel("Noisy q", fontsize=18)
         noiseless_curve_ax.plot(
             noiseless_curve_traj[factor * i_time][:, 0],
             noiseless_curve_traj[factor * i_time][:, 1],
