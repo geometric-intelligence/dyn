@@ -5,16 +5,16 @@ import numpy as np
 from geomstats.geometry.discrete_curves import R2, ElasticMetric
 
 
-def tau_matrix(times_train, m_degree):
+def tau_matrix(times_train, m):
     """Calculate tau matrix.
 
     tau = (X^T*X)^-1*X^T
     """
-    X = np.empty([len(times_train), m_degree + 1])
+    X = np.empty([len(times_train), m + 1])
 
     for i_time, time in enumerate(times_train):
         # Note: range(m_degree + 1) goes from 0 to m
-        for i_degree in range(m_degree + 1):
+        for i_degree in range(m + 1):
             X[i_time][i_degree] = time**i_degree
 
     X_T = X.transpose()
@@ -22,7 +22,51 @@ def tau_matrix(times_train, m_degree):
     return np.linalg.inv(X_T @ X) @ X_T  # @ is matrix multiplication
 
 
-def tau_sum(times_train, m_degree, i_val, j_train, times):
+def coeffs(times_train, curve_traj, elastic_metric, m):
+    """Calculate the coefficients of the polynomial fit.
+
+    Note
+    ----
+    For a degree m = 1, we have a linear fit, so we have two coefficients:
+    beta0, beta1. The fit is then beta0 + beta1 * t.
+
+    Parameters
+    ----------
+    times_train: the times at which we have training data
+    trajectory: the curve trajectory
+    elastic_metric: the elastic metric
+    degree: the degree of the polynomial
+
+    Returns
+    -------
+    coeffs: the coefficients of the polynomial fit
+    """
+    tau_mat = tau_matrix(times_train, m)
+
+    q_trajectory_train = elastic_metric.f_transform(curve_traj[times_train])
+    q_trajectory_train_flattened = q_trajectory_train.reshape((times_train, -1))
+    coeffs = tau_mat @ q_trajectory_train_flattened
+
+    assert coeffs.shape == (m + 1, q_trajectory_train.shape[-1]), coeffs.shape
+
+    return coeffs
+
+
+def predict_q(times, coeffs):
+    """Predict the curve at a given time."""
+    m = coeffs.shape[0] - 1
+    X = np.empty([len(times), m + 1])
+
+    for i_time, time in enumerate(times):
+        # Note: range(m_degree + 1) goes from 0 to m
+        for i_degree in range(m + 1):
+            X[i_time][i_degree] = time**i_degree
+    q_hat_flattened = X @ coeffs
+    q_hat = q_hat_flattened.reshape((len(times), -1, 2))
+    return q_hat
+
+
+def tau_sum(times_train, m, i_val, j_train, times):
     """Calculate tau_ij.
 
     tau_sum is the sum of a bunch of tau's.
@@ -38,12 +82,12 @@ def tau_sum(times_train, m_degree, i_val, j_train, times):
     l: the sum over degrees
     """
     # Note: Compute the tau matrix only once:
-    tau_mat = tau_matrix(times_train, m_degree)
+    tau_mat = tau_matrix(times_train, m)
 
     tau_sum = 0
     # Note: range(m_degree + 1) goes from 0 to m
-    for l_degree in range(m_degree + 1):
-        tau_sum += tau_mat[l_degree, j_train] * times[i_val] ** l_degree
+    for i_m in range(m + 1):
+        tau_sum += tau_mat[i_m, j_train] * times[i_val] ** i_m
 
     return tau_sum
 
@@ -78,7 +122,7 @@ def derivative_q_curve(curve, elastic_metric):
     return der_cartesian
 
 
-def dr_mse_da(i_val, trajectory, elastic_metric, times_train, degree):
+def dr_mse_da(i_val, trajectory, elastic_metric, times_train, m):
     """Calculate the derivative of r_mse for a given i_val w.r.t. a.
 
     Utilizes f_transform in discrete_curves to calculate
@@ -97,7 +141,7 @@ def dr_mse_da(i_val, trajectory, elastic_metric, times_train, degree):
     for time_train in times_train:
 
         fit_sum += tau_sum(
-            times_train, degree, i_val, time_train, times
+            times_train, m, i_val, time_train, times
         ) * derivative_q_curve(trajectory[time_train], elastic_metric)
 
     return derivative_q_curve(trajectory[i_val], elastic_metric) - fit_sum

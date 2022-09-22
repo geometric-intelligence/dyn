@@ -12,17 +12,17 @@ dataset_name = ["circles"]
 a_true = [0.5]
 m_true = [1]
 
-n_sampling_points = [20]
-n_times = [20]
-noise_std = [0.001]
+n_sampling_points = [40]
+n_times = [80]
+noise_std = [0.01]
 
 # Learning
 percent_train = 0.6
 percent_val = 0.3
 
-a_optimization = "adam"  # "sgd" # "adam"
-a_lr = 0.2
-a_init_diff = [-0.2]
+a_optimization = "sgd"  # "adam"
+a_lr = 0.2  # default for adam: 0.001
+a_init_diff = [0.5]
 max_iter = 20
 tol = 0.001
 

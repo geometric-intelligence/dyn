@@ -238,6 +238,7 @@ def run_wandb(
         q_traj=q_traj,
         times_train=times_train,
         times_val=times_val,
+        times_test=times_test,
         best_a=best_a,
         best_m=best_m,
         best_r2_val=best_r2_val,

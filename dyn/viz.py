@@ -1,15 +1,21 @@
 """Visualization tools."""
 
-import logging
-
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+from geomstats.geometry.discrete_curves import R2, ElasticMetric
+
+import dyn.dyn.features.math_am as math_am
 
 LINESTYLE_DICT = {
     "train": "-",
     "val": "--",
     "test": "-.",
+}
+
+MARKER_DICT = {
+    "curve": "o",
+    "q": "x",
 }
 
 
@@ -78,6 +84,7 @@ def plot_summary_wandb(
     q_traj,
     times_train,
     times_val,
+    times_test,
     best_a,
     best_m,
     best_r2_val,
@@ -97,13 +104,31 @@ def plot_summary_wandb(
     #     "r2": (-3, 1.1),
     # }
 
+    # Make predictions
+    elastic_metric = ElasticMetric(a=best_a, b=0.5, ambient_manifold=R2)
+    coeffs = math_am.coeffs(times_train, curve_traj, elastic_metric, m=best_m)
+    times = times_train + times_val + times_test
+    q_pred_traj = math_am.predict_q(times, coeffs)
+
+    starting_point_array = np.zeros(len(times), 2)
+    curve_pred_traj = elastic_metric.f_transform_inverse(
+        q_pred_traj, starting_point_array
+    )
+
     # We can only see ~10 curves given the size of the plot
     factor = n_times // 10  # --> n_times // factor = 10
     fig = plt.figure(figsize=(20, 16), constrained_layout=True)
 
+    # Figure has 7 rows:
+    # - 1 row for a, mse, and r2
+    # - 4 rows for the data: in curve space and in q space, noiseless and noisy
+    # - 2 rows for the prediction: in curve space and in q space
+
     gs = fig.add_gridspec(
-        nrows=5, ncols=n_times // factor, height_ratios=[2, 1, 1, 1, 1]
+        nrows=7, ncols=n_times // factor, height_ratios=[2, 1, 1, 1, 1]
     )
+
+    # Plot first row: a, mse, and r2
     ax_a = fig.add_subplot(gs[0, 0 : n_times // (factor * 3)])  # noqa: E203
     ax_mse = fig.add_subplot(
         gs[0, n_times // (factor * 3) : 2 * n_times // (factor * 3)]  # noqa: E203
@@ -142,22 +167,28 @@ def plot_summary_wandb(
         fontsize=18,
     )
 
-    logging.info("3. Save plots of predicted curves.")
+    # Plot 4 rows of data + 2 rows of prediction
     for i_time in range(n_times // factor):
         noiseless_curve_ax = fig.add_subplot(gs[1, i_time])
         curve_ax = fig.add_subplot(gs[2, i_time])
         noiseless_q_ax = fig.add_subplot(gs[3, i_time])
         q_ax = fig.add_subplot(gs[4, i_time])
+        curve_pred_ax = fig.add_subplot(gs[5, i_time])
+        q_pred_ax = fig.add_subplot(gs[6, i_time])
         if i_time == 0:
             noiseless_curve_ax.set_ylabel("Noiseless curve", fontsize=18)
             curve_ax.set_ylabel("Noisy curve", fontsize=18)
             noiseless_q_ax.set_ylabel("Noiseless q", fontsize=18)
             q_ax.set_ylabel("Noisy q", fontsize=18)
+            curve_pred_ax.set_ylabel("Predicted curve", fontsize=18)
+            q_pred_ax.set_ylabel("Predicted q", fontsize=18)
         elif factor * i_time >= n_train and factor * i_time < n_train + factor:
             noiseless_curve_ax.set_ylabel("Validation", fontsize=18)
             curve_ax.set_ylabel("Validation", fontsize=18)
             noiseless_q_ax.set_ylabel("Validation", fontsize=18)
             q_ax.set_ylabel("Validation", fontsize=18)
+            curve_pred_ax.set_ylabel("Validation", fontsize=18)
+            q_pred_ax.set_ylabel("Validation", fontsize=18)
         elif (
             factor * i_time >= n_train + n_val
             and factor * i_time < n_train + n_val + factor
@@ -166,28 +197,47 @@ def plot_summary_wandb(
             curve_ax.set_ylabel("Test", fontsize=18)
             noiseless_q_ax.set_ylabel("Test", fontsize=18)
             q_ax.set_ylabel("Test", fontsize=18)
+            curve_pred_ax.set_ylabel("Test", fontsize=18)
+            q_pred_ax.set_ylabel("Test", fontsize=18)
+
+        # Plot 4 rows of data
         noiseless_curve_ax.plot(
             noiseless_curve_traj[factor * i_time][:, 0],
             noiseless_curve_traj[factor * i_time][:, 1],
-            marker="o",
+            marker=MARKER_DICT["curve"],
             c="C0",
         )
         curve_ax.plot(
             curve_traj[factor * i_time][:, 0],
             curve_traj[factor * i_time][:, 1],
-            marker="o",
+            marker=MARKER_DICT["curve"],
             c="C1",
         )
         noiseless_q_ax.plot(
             noiseless_q_traj[factor * i_time][:, 0],
             noiseless_q_traj[factor * i_time][:, 1],
-            marker="o",
+            marker=MARKER_DICT["q"],
             c="C0",
         )
         q_ax.plot(
             q_traj[factor * i_time][:, 0],
             q_traj[factor * i_time][:, 1],
-            marker="o",
+            marker=MARKER_DICT["q"],
             c="C1",
         )
+
+        # Plot 2 rows of predictions
+        curve_pred_ax.plot(
+            curve_pred_traj[factor * i_time][:, 0],
+            curve_pred_traj[factor * i_time][:, 1],
+            marker=MARKER_DICT["curve"],
+            c="C2",
+        )
+        q_pred_ax.plot(
+            q_pred_traj[factor * i_time][:, 0],
+            q_pred_traj[factor * i_time][:, 1],
+            marker=MARKER_DICT["q"],
+            c="C2",
+        )
+
     return fig
