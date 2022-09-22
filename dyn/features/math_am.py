@@ -44,10 +44,10 @@ def coeffs(times_train, curve_traj, elastic_metric, m):
     tau_mat = tau_matrix(times_train, m)
 
     q_trajectory_train = elastic_metric.f_transform(curve_traj[times_train])
-    q_trajectory_train_flattened = q_trajectory_train.reshape((times_train, -1))
+    q_trajectory_train_flattened = q_trajectory_train.reshape((len(times_train), -1))
     coeffs = tau_mat @ q_trajectory_train_flattened
 
-    assert coeffs.shape == (m + 1, q_trajectory_train.shape[-1]), coeffs.shape
+    assert coeffs.shape == (m + 1, q_trajectory_train_flattened.shape[-1]), coeffs.shape
 
     return coeffs
 

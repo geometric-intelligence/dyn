@@ -107,25 +107,39 @@ def plot_summary_wandb(
     # Make predictions
     elastic_metric = ElasticMetric(a=best_a, b=0.5, ambient_manifold=R2)
     coeffs = math_am.coeffs(times_train, curve_traj, elastic_metric, m=best_m)
-    times = times_train + times_val + times_test
+    times = np.concatenate([times_train, times_val, times_test])
+    assert times.shape[0] == n_times, times.shape
     q_pred_traj = math_am.predict_q(times, coeffs)
 
-    starting_point_array = np.zeros(len(times), 2)
+    starting_point_array = np.zeros((len(times), 2))
     curve_pred_traj = elastic_metric.f_transform_inverse(
         q_pred_traj, starting_point_array
+    )
+
+    # Make baseline predictions with geodesic (m=1) of srv metric (a=1)
+    srv_metric = ElasticMetric(a=1, b=0.5, ambient_manifold=R2)
+    coeffs = math_am.coeffs(times_train, curve_traj, srv_metric, m=1)
+    times = np.concatenate([times_train, times_val, times_test])
+    assert times.shape[0] == n_times, times.shape
+    srv_q_pred_traj = math_am.predict_q(times, coeffs)
+
+    starting_point_array = np.zeros((len(times), 2))
+    srv_curve_pred_traj = srv_metric.f_transform_inverse(
+        srv_q_pred_traj, starting_point_array
     )
 
     # We can only see ~10 curves given the size of the plot
     factor = n_times // 10  # --> n_times // factor = 10
     fig = plt.figure(figsize=(20, 16), constrained_layout=True)
 
-    # Figure has 7 rows:
+    # Figure has 9 rows:
     # - 1 row for a, mse, and r2
     # - 4 rows for the data: in curve space and in q space, noiseless and noisy
     # - 2 rows for the prediction: in curve space and in q space
+    # - 2 rows for the baseline prediction: in curve space and in q space
 
     gs = fig.add_gridspec(
-        nrows=7, ncols=n_times // factor, height_ratios=[2, 1, 1, 1, 1]
+        nrows=9, ncols=n_times // factor, height_ratios=[2, 1, 1, 1, 1, 1, 1, 1, 1]
     )
 
     # Plot first row: a, mse, and r2
@@ -164,7 +178,7 @@ def plot_summary_wandb(
         f"r2_test = {r2_test_at_best:.3f}, "
         f"baseline_r2_srv_val = {baseline_r2_srv_val:.3f}, "  # noqa: E501
         f"baseline_r2_srv_test = {baseline_r2_srv_test:.3f}",  # noqa: E501
-        fontsize=18,
+        fontsize=14,
     )
 
     # Plot 4 rows of data + 2 rows of prediction
@@ -175,13 +189,17 @@ def plot_summary_wandb(
         q_ax = fig.add_subplot(gs[4, i_time])
         curve_pred_ax = fig.add_subplot(gs[5, i_time])
         q_pred_ax = fig.add_subplot(gs[6, i_time])
+        srv_curve_pred_ax = fig.add_subplot(gs[7, i_time])
+        srv_q_pred_ax = fig.add_subplot(gs[8, i_time])
         if i_time == 0:
             noiseless_curve_ax.set_ylabel("Noiseless curve", fontsize=18)
             curve_ax.set_ylabel("Noisy curve", fontsize=18)
             noiseless_q_ax.set_ylabel("Noiseless q", fontsize=18)
             q_ax.set_ylabel("Noisy q", fontsize=18)
-            curve_pred_ax.set_ylabel("Predicted curve", fontsize=18)
-            q_pred_ax.set_ylabel("Predicted q", fontsize=18)
+            curve_pred_ax.set_ylabel("Pred curve", fontsize=18)
+            q_pred_ax.set_ylabel("Pred q", fontsize=18)
+            srv_curve_pred_ax.set_ylabel("SRV pred curve", fontsize=18)
+            srv_q_pred_ax.set_ylabel("SRV pred q", fontsize=18)
         elif factor * i_time >= n_train and factor * i_time < n_train + factor:
             noiseless_curve_ax.set_ylabel("Validation", fontsize=18)
             curve_ax.set_ylabel("Validation", fontsize=18)
@@ -189,6 +207,8 @@ def plot_summary_wandb(
             q_ax.set_ylabel("Validation", fontsize=18)
             curve_pred_ax.set_ylabel("Validation", fontsize=18)
             q_pred_ax.set_ylabel("Validation", fontsize=18)
+            srv_curve_pred_ax.set_ylabel("Validation", fontsize=18)
+            srv_q_pred_ax.set_ylabel("Validation", fontsize=18)
         elif (
             factor * i_time >= n_train + n_val
             and factor * i_time < n_train + n_val + factor
@@ -199,6 +219,8 @@ def plot_summary_wandb(
             q_ax.set_ylabel("Test", fontsize=18)
             curve_pred_ax.set_ylabel("Test", fontsize=18)
             q_pred_ax.set_ylabel("Test", fontsize=18)
+            srv_curve_pred_ax.set_ylabel("Test", fontsize=18)
+            srv_q_pred_ax.set_ylabel("Test", fontsize=18)
 
         # Plot 4 rows of data
         noiseless_curve_ax.plot(
@@ -238,6 +260,20 @@ def plot_summary_wandb(
             q_pred_traj[factor * i_time][:, 1],
             marker=MARKER_DICT["q"],
             c="C2",
+        )
+
+        # Plot 2 rows of SRV predictions
+        srv_curve_pred_ax.plot(
+            srv_curve_pred_traj[factor * i_time][:, 0],
+            srv_curve_pred_traj[factor * i_time][:, 1],
+            marker=MARKER_DICT["curve"],
+            c="C3",
+        )
+        srv_q_pred_ax.plot(
+            srv_q_pred_traj[factor * i_time][:, 0],
+            srv_q_pred_traj[factor * i_time][:, 1],
+            marker=MARKER_DICT["q"],
+            c="C3",
         )
 
     return fig
