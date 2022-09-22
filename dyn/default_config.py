@@ -12,15 +12,18 @@ dataset_name = ["circles"]
 a_true = [1.0]
 m_true = [1]
 
-n_sampling_points = [50]
+n_sampling_points = [20]
 n_times = [25]
 noise_var = [0.01]
 
 # Learning
+percent_train = 0.6
+percent_val = 0.3
+
 a_optimization = "gradient"
 a_lr = 0.2
-a_init_diff = [0.2]
-max_iter = 20
+a_init_diff = [-0.2]
+max_iter = 10
 tol = 0.001
 
 # loading cells

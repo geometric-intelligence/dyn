@@ -487,7 +487,10 @@ def know_m_find_best_a(
     (MSE) function.
     """
     min_iter = 3
-    print(f"DEGREE {degree}: Gradient ascent on R2 val wrt a:")
+    print(
+        f"DEGREE {degree}: Gradient ascent on R2 val wrt a "
+        f"(a_lr={a_lr}, tol={tol}, max_iter={max_iter}):"
+    )
     return gradient_descent(
         a_init=a_init,
         a_lr=a_lr,
@@ -504,10 +507,11 @@ def know_m_find_best_a(
 
 def find_best_am(
     trajectory,
-    a_init=0.2,
+    times_train=None,
+    times_val=None,
+    times_test=None,
     m_grid=None,
-    percent_train=0.4,
-    percent_val=0.35,
+    a_init=0.2,
     a_lr=0.1,
     max_iter=20,
     tol=0.01,
@@ -527,29 +531,13 @@ def find_best_am(
     r2_srv_test_for_i_m = -gs.ones([len(ms)])
     iteration_histories_for_i_m = {}
 
-    n_times = len(trajectory)
-    times = gs.arange(0, n_times, 1)
-
-    print("n_times: " + str(n_times))
-
-    n_train = int(n_times * percent_train)
-    n_val = int(n_times * percent_val)
-
-    times_train = times[:n_train]  # noqa: E203
-    times_val = times[n_train : (n_train + n_val)]  # noqa: E203
-    times_test = times[(n_train + n_val) :]  # noqa: E203
-
-    print(times_train)
-    print(times_val)
-    print(times_test)
-
     for i_m, degree in enumerate(ms):
         last_a, iteration_history = know_m_find_best_a(
             trajectory=trajectory,
-            degree=degree,
             times_train=times_train,
             times_val=times_val,
             times_test=times_test,
+            degree=degree,
             a_init=a_init,
             a_lr=a_lr,
             max_iter=max_iter,

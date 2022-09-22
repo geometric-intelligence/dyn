@@ -6,7 +6,7 @@ import os
 import tempfile
 
 import default_config
-import matplotlib.pyplot as plt
+import geomstats.backend as gs
 import numpy as np
 import pandas as pd
 import wandb
@@ -14,10 +14,12 @@ import wandb
 import dyn.dyn.datasets.experimental as experimental
 import dyn.dyn.datasets.synthetic as synthetic
 import dyn.dyn.features.optimize_am as optimize_am
+import dyn.dyn.viz as viz
 
 os.environ["GEOMSTATS_BACKEND"] = "pytorch"
 
 np.random.seed(2022)
+gs.random.seed(2022)
 
 # i feel like we should load the dataset once at the
 # beginning of the script, and then
@@ -120,6 +122,8 @@ def run_wandb(
             "noise_var": noise_var,
             "n_sampling_points": n_sampling_points,
             "n_times": n_times,
+            "percent_train": default_config.percent_train,
+            "percent_val": default_config.percent_val,
             "a_init": a_init,
             "m_grid": default_config.m_grid,
             "a_optimization": default_config.a_optimization,
@@ -136,10 +140,32 @@ def run_wandb(
         f"Load dataset {dataset_name} with " f"a_true = {a_true} and m_true = {m_true}"
     )
     b = 0.5
-    noiseless_trajectory, trajectory = synthetic.geodesic_between_curves(
+    (
+        noiseless_curve_traj,
+        curve_traj,
+        noiseless_q_traj,
+        q_traj,
+    ) = synthetic.geodesic_between_curves(
         start_cell, end_cell, a_true, b, n_times, noise_var
     )
+    trajectory = curve_traj
     print(f"The shape of the trajectory is: {trajectory.shape}")
+
+    n_times = len(trajectory)
+    times = np.arange(0, n_times, 1)
+
+    print("n_times: " + str(n_times))
+
+    n_train = int(n_times * config.percent_train)
+    n_val = int(n_times * config.percent_val)
+
+    times_train = times[:n_train]  # noqa: E203
+    times_val = times[n_train : (n_train + n_val)]  # noqa: E203
+    times_test = times[(n_train + n_val) :]  # noqa: E203
+
+    print(times_train)
+    print(times_val)
+    print(times_test)
 
     logging.info("Find best a and m corresponding to the trajectory.")
     (
@@ -152,8 +178,11 @@ def run_wandb(
         iteration_histories_for_i_m,
     ) = optimize_am.find_best_am(
         trajectory=trajectory,
-        a_init=config.a_init,
+        times_train=times_train,
+        times_val=times_val,
+        times_test=times_test,
         m_grid=config.m_grid,
+        a_init=config.a_init,
         a_lr=config.a_lr,
         max_iter=config.max_iter,
         tol=config.tol,
@@ -201,111 +230,22 @@ def run_wandb(
         )
         wandb.log({table_key: wandb.Table(dataframe=iteration_history_df)})
 
-    plot_name_to_ylim = {
-        "a": (-0.1, 5),
-        "mse": (-0.1, 1),
-        "r2": (-3, 1.1),
-    }
-    plot_name_to_h_val = {
-        "a": a_true,
-        "mse": 0,
-        "r2": 1,
-    }
-
-    fig = plt.figure(figsize=(20, 5), constrained_layout=True)
-    # Take half of n_times to see the curves.
-    gs = fig.add_gridspec(nrows=3, ncols=n_times // 2, height_ratios=[2, 1, 1])
-    ax_a = fig.add_subplot(gs[0, 0 : n_times // 6])  # noqa: E203
-    ax_mse = fig.add_subplot(gs[0, n_times // 6 : 2 * n_times // 6])  # noqa: E203
-    ax_r2 = fig.add_subplot(gs[0, 2 * n_times // 6 : 3 * n_times // 6])  # noqa: E203
-    axs = [ax_a, ax_mse, ax_r2]
-
-    for i_plot, plot_name in enumerate(["a", "mse", "r2"]):
-        if plot_name == "a":
-            axs[i_plot].axhline(
-                config.a_true, label=f"a_true = {config.a_true}", c="black"
-            )
-        for i_m, m in enumerate(config.m_grid):
-            if plot_name == "a":
-                iteration_history = iteration_histories_for_i_m[i_m][plot_name]
-                iterations = np.arange(0, len(iteration_history))
-
-                axs[i_plot].plot(
-                    iterations, iteration_history, label=f"m = {m}", c=f"C{m}"
-                )
-
-            elif plot_name in ["mse", "r2"]:
-                iteration_history = iteration_histories_for_i_m[i_m][
-                    plot_name + "_train"
-                ]
-                iterations = np.arange(0, len(iteration_history))
-                axs[i_plot].plot(
-                    iterations,
-                    iteration_history,
-                    label=f"m = {m} (train)",
-                    c=f"C{m}",
-                    linestyle="-",
-                )
-                iteration_history = iteration_histories_for_i_m[i_m][plot_name + "_val"]
-                iterations = np.arange(0, len(iteration_history))
-                axs[i_plot].plot(
-                    iterations,
-                    iteration_history,
-                    label=f"m = {m} (val)",
-                    c=f"C{m}",
-                    linestyle="--",
-                )
-
-                iteration_history = iteration_histories_for_i_m[i_m][
-                    plot_name + "_test"
-                ]
-                iterations = np.arange(0, len(iteration_history))
-                axs[i_plot].plot(
-                    iterations,
-                    iteration_history,
-                    label=f"m = {m} (test)",
-                    c=f"C{m}",
-                    linestyle="-.",
-                )
-
-                axs[i_plot].axhline(plot_name_to_h_val[plot_name], c="black")
-
-        axs[i_plot].set_xlabel("Iterations")
-        axs[i_plot].set_title(plot_name)
-        axs[i_plot].set_ylim(plot_name_to_ylim[plot_name])
-
-        axs[i_plot].legend()
-
-    plt.suptitle(
-        f"Ground truth: a_true = {a_true}, m_true = {m_true}  ---  "
-        "Optimization a, m gives: "
-        f"a = {best_a:.3f}, m = {best_m}, r2_val = {best_r2_val:.3f}  ---  "
-        f"Evaluation:"
-        f"r2_test = {r2_test_at_best_r2_val:.3f}, r2_srv_test = {r2_srv_test_at_best_r2_val}"  # noqa: E501
+    fig = viz.plot_summary_wandb(
+        iteration_histories_for_i_m=iteration_histories_for_i_m,
+        config=config,
+        noiseless_curve_traj=noiseless_curve_traj,
+        curve_traj=curve_traj,
+        noiseless_q_traj=noiseless_q_traj,
+        q_traj=q_traj,
+        times_train=times_train,
+        times_val=times_val,
+        best_a=best_a,
+        best_m=best_m,
+        best_r2_val=best_r2_val,
+        r2_srv_val_at_best_r2_val=r2_srv_val_at_best_r2_val,
+        r2_test_at_best_r2_val=r2_test_at_best_r2_val,
+        r2_srv_test_at_best_r2_val=r2_srv_test_at_best_r2_val,
     )
-
-    logging.info("3. Save plots of predicted curves.")
-    for i_time in range(n_times // 3):
-        traj_ax = plt.subplot(3, n_times // 3, n_times // 3 + 1 + i_time)
-        if i_time == 0:
-            traj_ax.set_ylabel("Noiseless")
-        traj_ax.plot(
-            noiseless_trajectory[3 * i_time][:, 0],
-            noiseless_trajectory[3 * i_time][:, 1],
-            marker="o",
-            c="C0",
-        )
-
-    for i_time in range(n_times // 3):
-        traj_ax = plt.subplot(3, n_times // 3, 2 * n_times // 3 + 1 + i_time)
-        if i_time == 0:
-            traj_ax.set_ylabel("Noisy")
-        traj_ax.plot(
-            trajectory[3 * i_time][:, 0],
-            trajectory[3 * i_time][:, 1],
-            marker="o",
-            c="C1",
-        )
 
     fig.savefig(f"saved_figs/optimize_am/{config.run_name}_summary.png")
     wandb.log({"summary_fig": wandb.Image(fig)})

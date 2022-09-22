@@ -256,25 +256,31 @@ def geodesic_between_curves(start_curve, end_curve, a, b=0.5, n_times=20, noise_
     assert times.shape == ((n_times,))
     print(times.shape)
 
-    q_trajectory = []
+    noiseless_q_traj = []
     for time in times:
         q_at_time = time / (n_times - 1) * start_q + (1 - time / (n_times - 1)) * end_q
-        q_trajectory.append(q_at_time)
+        noiseless_q_traj.append(q_at_time)
 
-    q_trajectory = np.array(q_trajectory)
-    assert q_trajectory.shape == (n_times, start_q.shape[0], 2), q_trajectory.shape
-    print(q_trajectory.shape)
+    noiseless_q_traj = np.array(noiseless_q_traj)
+    assert noiseless_q_traj.shape == (
+        n_times,
+        start_q.shape[0],
+        2,
+    ), noiseless_q_traj.shape
+    print(noiseless_q_traj.shape)
 
-    q_trajectory = torch.from_numpy(q_trajectory)
+    noiseless_q_traj = torch.from_numpy(noiseless_q_traj)
     starting_point_array = gs.zeros((n_times, 2))
-    curve_trajectory = elastic_metric.f_transform_inverse(
-        q_trajectory, starting_point_array
+    noiseless_curve_traj = elastic_metric.f_transform_inverse(
+        noiseless_q_traj, starting_point_array
     )
-    noisy_curve_trajectory = curve_trajectory + np.random.normal(
-        loc=0, scale=noise_var, size=curve_trajectory.shape
+    curve_traj = noiseless_curve_traj + np.random.normal(
+        loc=0, scale=noise_var, size=noiseless_curve_traj.shape
     )
 
-    return curve_trajectory, noisy_curve_trajectory
+    q_traj = elastic_metric.f_transform(curve_traj)
+
+    return noiseless_curve_traj, curve_traj, noiseless_q_traj, q_traj
 
 
 # def trajectory_between_curves_regression(
