@@ -247,6 +247,7 @@ def run_wandb(
     )
 
     fig.savefig(f"saved_figs/optimize_am/{config.run_name}_summary.png")
+    fig.savefig(f"saved_figs/optimize_am/{config.run_name}_summary.svg")
     wandb.log({"summary_fig": wandb.Image(fig)})
 
     wandb.finish()

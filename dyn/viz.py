@@ -138,7 +138,7 @@ def plot_summary_wandb(
         f"a = {best_a:.3f}, m = {best_m}, r2_val = {best_r2_val:.3f}  ---  "
         f"Evaluation: "
         f"r2_test = {r2_test_at_best:.3f}, "
-        f"baseline_r2_srv_val = {baseline_r2_srv_val:.3f}",  # noqa: E501
+        f"baseline_r2_srv_val = {baseline_r2_srv_val:.3f}"  # noqa: E501
         f"baseline_r2_srv_test = {baseline_r2_srv_test:.3f}",  # noqa: E501
         fontsize=18,
     )

@@ -13,17 +13,17 @@ a_true = [1.0]
 m_true = [1]
 
 n_sampling_points = [50]
-n_times = [60]
+n_times = [20]
 noise_std = [0.001]
 
 # Learning
 percent_train = 0.6
 percent_val = 0.3
 
-a_optimization = "gradient"
+a_optimization = "sgd"  # "adam"
 a_lr = 0.2
 a_init_diff = [-0.2]
-max_iter = 30
+max_iter = 6
 tol = 0.001
 
 # loading cells
@@ -37,4 +37,3 @@ m_grid = [1]  # , 2, 3]
 
 # Run name in wandb
 now = str(datetime.now().replace(second=0, microsecond=0).strftime("%m%d-%H:%M:%S"))
-run_name = f"{now}_{dataset_name}"
