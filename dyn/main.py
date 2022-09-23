@@ -57,12 +57,11 @@ def run_tests():
 
         if dataset_name == "cells":
             cells = [default_config.start_cell, default_config.end_cell]
-            # Note: using n_cells = -1 avoid the random selection of cells
             _, cell_shapes, labels_a, labels_b = experimental.preprocess(
                 cells=cells,
                 labels_a=default_config.lines,
                 labels_b=default_config.treatments,
-                n_cells=-1,
+                n_cells=2,
                 n_sampling_points=n_sampling_points,
                 quotient=default_config.quotient,
             )
