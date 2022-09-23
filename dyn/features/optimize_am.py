@@ -132,7 +132,8 @@ def know_m_find_best_a(
     a = a_init
 
     for iter in range(max_iter):
-        if a >= 0:
+        # Need a >= 0 (by definition) and a < 1 (for the f_transform)
+        if a >= 0 and a < 1:
             if a_optimization == "sgd":
                 update_rule = gradient_update_rule(
                     trajectory, times_train, times_val, m, a

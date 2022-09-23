@@ -3,18 +3,20 @@ import logging
 from datetime import datetime
 
 import geomstats.datasets.utils as data_utils
+import numpy as np
 
 # Can be replaced by logging.DEBUG or logging.WARNING
 logging.basicConfig(level=logging.INFO)
 
 # Dataset
-dataset_name = ["circles"]
-a_true = [0.2, 0.5, 0.8]
+dataset_name = ["cells"]  # ["circles"]
+a_true = [0.5]
+assert np.all([a > 0 and a < 1 for a in a_true]), "a_true must be in (0, 1)"
 m_true = [1]
 
-n_sampling_points = [15, 30]
-n_times = [20, 50, 100]
-noise_std = [0.0, 0.001, 0.01]
+n_sampling_points = [30]
+n_times = [100]
+noise_std = [0.0]
 
 # Learning
 percent_train = 0.6
