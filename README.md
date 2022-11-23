@@ -1,10 +1,10 @@
 # Regression-Based Elastic Metric Learning #
 
-Official implementation of the paper “Regression-Based Elastic Metric Learning on Shape Spaces of Cell Curves”
+Official implementation of the paper “Regression-Based Elastic Metric Learning on Shape Spaces of Cell Curves”.
 
 ***[[Pre-print](https://arxiv.org/abs/2207.12126)], accepted for publication at [[NeurIPS Workshop Learning Meaningful Representations of Life](https://www.lmrl.org/)]***
 
-![NeurIPS Poster](/images/poster.jpeg)
+![NeurIPS Poster](/images/poster.jpg)
 
 ## ⭐️ Overview of Goals ##
 
@@ -12,17 +12,18 @@ Official implementation of the paper “Regression-Based Elastic Metric Learning
 - Specifically, we optimize geodesic regression analysis by learning the elastic metric parameters that model a given data trajectory close to a geodesic.
 
 
-![Overview of REML's goal and results](/images/summary.jpeg)
+![Overview of REML's goal and results](/images/summary.jpg)
 Left: A trajectory may follow a geodesic as calculated by one metric but not follow a geodesic as calculated by another metric. Our paradigm learns the elastic metric (parameterized by a) that best models the data trajectory as a geodesic on the manifold of discrete curves. Right: true cell trajectory overlaid with 1) cells predicted by a regression which utilizes our paradigm’s learned metric parameter (a*) 2) cells predicted by a square-root-velocity (SRV) regression. Regression predictions using the SRV metric (red) do not match the data trajectory (blue), but our algorithm’s a* predicts the data trajectory perfectly: our prediction (green) perfectly overlays the data trajectory (blue).
 
 ### Elastic Metric ###
-- We consider a family of elastic metrics [given by]{https://www.researchgate.net/publication/225134644_On_Shape_of_Plane_Elastic_Curves}
-$ g^{a, b}_c(h, k) = a^2\int_{0}^1\langle D_sh, N\rangle\langle D_sk, N\rangle ds + b^2 \int_{0}^1\langle D_sh, T\rangle\langle D_sk, T\rangle ds$
-- We use the elastic metric implementation in [Geomstats]{https://geomstats.github.io/}.
+- We consider a family of elastic metrics
+[given by]{https://www.researchgate.net/publication/225134644_On_Shape_of_Plane_Elastic_Curves} $g^{a, b}_c(h, k) = a^2\int_{0}^1\langle D_sh, N\rangle\langle D_sk, N\rangle ds + b^2 \int_{0}^1\langle D_sh, T\rangle\langle D_sk, T\rangle ds$
+- We use the elastic metric implementation in
+[Geomstats]{https://geomstats.github.io/}.
 - The elastic metric is parameterized by $a$ and $b$ which quantify how much two shapes are "stretched" or "bent" compared to each other, respectively.
 - Changing $a$ and $b$ of the elastic metric changes the distance between various points on the manifold of discrete curves: the space where we analyze curves. As such, changing $a$ and $b$ changes the nature of geodesics on the manifold of discrete curves.
 
-!["a" and "b" = "stretching" and "bending"](/images/bend_stretch_operations.jpeg)
+!["a" and "b" = "stretching" and "bending"](/images/bend_stretch_operations.jpg)
 
 - Note that the ratio $a/b$ is sufficient to describe variationos of $ g^{a, b}$. Thus, we set $b=0.5$, as varying $b$ only changes units of the calculation.
 - Our paradigm learns the $a*$ (and therefore the ratio $a*/b$) which models the data trajectory as being closest to a geodesic, as evaluated by the coefficient of determination $R^2$.
@@ -33,7 +34,7 @@ $ g^{a, b}_c(h, k) = a^2\int_{0}^1\langle D_sh, N\rangle\langle D_sk, N\rangle d
 - We apply our paradigm to data trajectories of cell outlines changing over time
 - For each experiement, we generate a semi-synthetic data trajectory by drawing a geodesic between two real cancer cells
 
-!["a" and "b" = "stretching" and "bending"](/images/bend_stretch_operations.jpeg)
+![semi-synthetic cell trajectory](/images/synthetic_trajectory.jpg)
 
 - We create the trajectory with a predetermined 1) number of cells 2) number of sampling points (how many times each cell outline is sampled) 3) amount of noise 4) "true $a$" (the metric used to draw the geodesic between real cancer cells). Note that because the semi-synthetic geodesic is drawn with the metric parameter $a_{true}$, the metric parameter $a_{true}$ WILL model the trajectory as a geodesic.
 - Thus, the gradient ascent learning scheme aims to learn an $a*$ close to $a_{true}$.
@@ -43,9 +44,9 @@ $ g^{a, b}_c(h, k) = a^2\int_{0}^1\langle D_sh, N\rangle\langle D_sk, N\rangle d
 - We compare the predictive power of $a*$ regression to the predictive power of regression with the square-root-velocity (SRV) metric, which is a special case of the elastic metric where $a = 1$ and $b = 0.5$.
 - Performing geodesic regression with our learned $a*$ metric parameter improves predictive power to geodesic regression, as geodesic regression is more accurate when the data trajectory is close to a geodesic.
 
-![REML increases predictive power of geodesic regression](/images/ideal_conditions.jpeg)
+![REML increases predictive power of geodesic regression](/images/ideal_conditions.jpg)
 
-![REML converges a* to a_true and r2 to 1](/images/convergence_results.jpeg)
+![REML converges a* to a_true and r2 to 1](/images/convergence_results.jpg)
 
 
 ## 🌎 Bibtex ##
