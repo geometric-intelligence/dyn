@@ -4,7 +4,7 @@ Official implementation of the paper “Regression-Based Elastic Metric Learning
 
 ***[[Pre-print](https://arxiv.org/abs/2207.12126)], accepted for publication at [[NeurIPS Workshop Learning Meaningful Representations of Life](https://www.lmrl.org/)]***
 
-![NeurIPS Poster](/images/poster.jpeg)
+![NeurIPS Poster](/images/poster.jpg)
 
 ## ⭐️ Overview of Goals ##
 
