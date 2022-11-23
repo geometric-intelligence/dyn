@@ -19,7 +19,7 @@ Left: A trajectory may follow a geodesic as calculated by one metric but not fol
 ### Elastic Metric ###
 - We consider a family of elastic metrics [given by:](https://www.researchgate.net/publication/225134644_On_Shape_of_Plane_Elastic_Curves)
 
-$$g^{a, b}_c(h, k) = a^2\int_{0}^1\langle D_sh, N\rangle\langle D_sk, N\rangle ds + b^2 \int_{0}^1\langle D_sh, T\rangle\langle D_sk, T\rangle ds$$
+$$g^{a, b}_c(h, k) = a^2 \int_{0}^1\langle D_sh, N\rangle\langle D_sk, N\rangle ds + b^2 \int_{0}^1\langle D_sh, T\rangle\langle D_sk, T\rangle ds$$
 
 - We use the elastic metric implementation in [Geomstats](https://geomstats.github.io/).
 - The elastic metric is parameterized by $a$ and $b$ which quantify how much two shapes are "stretched" or "bent" compared to each other, respectively.
