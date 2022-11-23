@@ -1,14 +1,52 @@
 # Regression-Based Elastic Metric Learning #
 
-Official PyTorch implementation of the paper “Regression-Based Elastic Metric Learning on Shape Spaces of Cell Curves”
+Official implementation of the paper “Regression-Based Elastic Metric Learning on Shape Spaces of Cell Curves”
 
-***[[Paper](https://arxiv.org/abs/2207.12126)] published at [[NeurIPS Workshop Learning Meaningful Representations of Life](https://www.lmrl.org/)]***
+***[[Pre-print](https://arxiv.org/abs/2207.12126)], accepted for publication at [[NeurIPS Workshop Learning Meaningful Representations of Life](https://www.lmrl.org/)]***
 
-![Overview of REML's goal and results](/images/summary_fig.pdf)
+![NeurIPS Poster](/images/poster.jpeg)
 
-Regression-Based Elastic Metric Learning is a machine learning tool designed to improve analysis of 2D curves changing over time. We consider the elastic metric, which is parameterized by $a$ and $b$ which quantify how much two shapes are "stretched" or "bent" compared to each other, respectively. Changing $a$ and $b$ of the elastic metric changes the distance between various points on the manifold of discrete curves: the space where we analyze curves. As such, changing $a$ and $b$ changes the nature of geodesics on the manifold of discrete curves. Our paradigm learns the $a$ and $b$ which have a geodesic closest to the input data trajectory, as evaluated by the coefficient of determination $R^2$. Learning these parameters allows us to then perform geodesic regression on the data trajectory in a space where the data trajectory is closest to a geodesic of that space -- thus improving regression fit and predictive power.
+## ⭐️ Overview of Goals ##
 
-We apply our paradigm to data trajectories of cell outlines changing over time. Cells are dynamic objects that change their shape as they move and evolve. Cell shape is indicative of cell function, so analyzing the shape of a cell over time can provide key insights to the internal evolutions of the cell.
+- Regression-Based Elastic Metric Learning is a machine learning tool designed to improve analysis of discrete parameterizations of 2D cures changing over time.
+- Specifically, we optimize geodesic regression analysis by learning the elastic metric parameters that model a given data trajectory close to a geodesic.
+
+
+![Overview of REML's goal and results](/images/summary.jpeg)
+Left: A trajectory may follow a geodesic as calculated by one metric but not follow a geodesic as calculated by another metric. Our paradigm learns the elastic metric (parameterized by a) that best models the data trajectory as a geodesic on the manifold of discrete curves. Right: true cell trajectory overlaid with 1) cells predicted by a regression which utilizes our paradigm’s learned metric parameter (a*) 2) cells predicted by a square-root-velocity (SRV) regression. Regression predictions using the SRV metric (red) do not match the data trajectory (blue), but our algorithm’s a* predicts the data trajectory perfectly: our prediction (green) perfectly overlays the data trajectory (blue).
+
+### Elastic Metric ###
+- We consider a family of elastic metrics [given by]{https://www.researchgate.net/publication/225134644_On_Shape_of_Plane_Elastic_Curves}
+$ g^{a, b}_c(h, k) = a^2\int_{0}^1\langle D_sh, N\rangle\langle D_sk, N\rangle ds + b^2 \int_{0}^1\langle D_sh, T\rangle\langle D_sk, T\rangle ds$
+- We use the elastic metric implementation in [Geomstats]{https://geomstats.github.io/}.
+- The elastic metric is parameterized by $a$ and $b$ which quantify how much two shapes are "stretched" or "bent" compared to each other, respectively.
+- Changing $a$ and $b$ of the elastic metric changes the distance between various points on the manifold of discrete curves: the space where we analyze curves. As such, changing $a$ and $b$ changes the nature of geodesics on the manifold of discrete curves.
+
+!["a" and "b" = "stretching" and "bending"](/images/bend_stretch_operations.jpeg)
+
+- Note that the ratio $a/b$ is sufficient to describe variationos of $ g^{a, b}$. Thus, we set $b=0.5$, as varying $b$ only changes units of the calculation.
+- Our paradigm learns the $a*$ (and therefore the ratio $a*/b$) which models the data trajectory as being closest to a geodesic, as evaluated by the coefficient of determination $R^2$.
+- We use a gradient ascent algorithm, along with our derived analytical expression of $R^2$ in terms of $a$, to find the $a*$ which maximizes $R^2$ for a given trajectory.
+
+### Experiments ###
+
+- We apply our paradigm to data trajectories of cell outlines changing over time
+- For each experiement, we generate a semi-synthetic data trajectory by drawing a geodesic between two real cancer cells
+
+!["a" and "b" = "stretching" and "bending"](/images/bend_stretch_operations.jpeg)
+
+- We create the trajectory with a predetermined 1) number of cells 2) number of sampling points (how many times each cell outline is sampled) 3) amount of noise 4) "true $a$" (the metric used to draw the geodesic between real cancer cells). Note that because the semi-synthetic geodesic is drawn with the metric parameter $a_{true}$, the metric parameter $a_{true}$ WILL model the trajectory as a geodesic.
+- Thus, the gradient ascent learning scheme aims to learn an $a*$ close to $a_{true}$.
+
+
+### Results ###
+- We compare the predictive power of $a*$ regression to the predictive power of regression with the square-root-velocity (SRV) metric, which is a special case of the elastic metric where $a = 1$ and $b = 0.5$.
+- Performing geodesic regression with our learned $a*$ metric parameter improves predictive power to geodesic regression, as geodesic regression is more accurate when the data trajectory is close to a geodesic.
+
+![REML increases predictive power of geodesic regression](/images/ideal_conditions.jpeg)
+
+![REML converges a* to a_true and r2 to 1](/images/convergence_results.jpeg)
+
 
 ## 🌎 Bibtex ##
 If this code is useful to your research, please cite:
@@ -80,7 +118,9 @@ This will initiate runs with every combination of hyperparameters detailed in de
 
 You can see all of your runs by logging into the Wandb webpage and looking under your project name "metric-learning-TEST". Our code automatically names each run as
 
-{dataset-used}_{a_true}_{gradient-ascent-initiation}_mt1_{n_times}_{n_sampling_points}_{noise_std}_{time-of-run}
+```
+<dataset-used>_<a_true>_<gradient-ascent-initiation>_mt1_<n_times>_<n_sampling_points>_<noise_std>_<time-of-run>
+```
 
 ## 👩‍🔧 Authors ##
 [Adele Myers](https://ahma2017.wixsite.com/adelemyers)
