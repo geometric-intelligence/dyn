@@ -2,7 +2,7 @@
 
 Official implementation of the paper “Regression-Based Elastic Metric Learning on Shape Spaces of Cell Curves”.
 
-***[[Pre-print](https://arxiv.org/abs/2210.01932)], accepted for publication at [[NeurIPS Workshop Learning Meaningful Representations of Life](https://www.lmrl.org/)]***
+***[[Paper](https://arxiv.org/abs/2210.01932)] published at [[NeurIPS Workshop Learning Meaningful Representations of Life](https://www.lmrl.org/)]***
 
 ## 💥 NeurIPS LMRL Poster ##
 
