@@ -2,11 +2,11 @@
 
 Official PyTorch implementation of the paper “Regression-Based Elastic Metric Learning on Shape Spaces of Cell Curves”
 
-***[[Pre-print](https://arxiv.org/abs/2207.12126)], accepted for publication at [[NeurIPS Workshop Learning Meaningful Representations of Life](https://www.lmrl.org/)]***
+***[[Paper](https://arxiv.org/abs/2207.12126)] published at [[NeurIPS Workshop Learning Meaningful Representations of Life](https://www.lmrl.org/)]***
 
 ![Overview of REML's goal and results](/images/summary_fig.pdf)
 
-Regression-Based Elastic Metric Learning is a machine learning tool designed to improve analysis of 2D cures changing over time. We consider the elastic metric, which is parameterized by $a$ and $b$ which quantify how much two shapes are "stretched" or "bent" compared to each other, respectively. Changing $a$ and $b$ of the elastic metric changes the distance between various points on the manifold of discrete curves: the space where we analyze curves. As such, changing $a$ and $b$ changes the nature of geodesics on the manifold of discrete curves. Our paradigm learns the $a$ and $b$ which have a geodesic closest to the input data trajectory, as evaluated by the coefficient of determination $R^2$. Learning these parameters allows us to then perform geodesic regression on the data trajectory in a space where the data trajectory is closest to a geodesic of that space -- thus improving regression fit and predictive power.
+Regression-Based Elastic Metric Learning is a machine learning tool designed to improve analysis of 2D curves changing over time. We consider the elastic metric, which is parameterized by $a$ and $b$ which quantify how much two shapes are "stretched" or "bent" compared to each other, respectively. Changing $a$ and $b$ of the elastic metric changes the distance between various points on the manifold of discrete curves: the space where we analyze curves. As such, changing $a$ and $b$ changes the nature of geodesics on the manifold of discrete curves. Our paradigm learns the $a$ and $b$ which have a geodesic closest to the input data trajectory, as evaluated by the coefficient of determination $R^2$. Learning these parameters allows us to then perform geodesic regression on the data trajectory in a space where the data trajectory is closest to a geodesic of that space -- thus improving regression fit and predictive power.
 
 We apply our paradigm to data trajectories of cell outlines changing over time. Cells are dynamic objects that change their shape as they move and evolve. Cell shape is indicative of cell function, so analyzing the shape of a cell over time can provide key insights to the internal evolutions of the cell.
 
