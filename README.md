@@ -14,6 +14,7 @@ Official implementation of the paper “Regression-Based Elastic Metric Learning
 - Specifically, we optimize geodesic regression analysis by learning the elastic metric parameters that model a given data trajectory close to a geodesic.
 
 ![Overview of REML's goal and results](/images/summary.jpg)
+
 Left: A trajectory may follow a geodesic as calculated by one metric but not follow a geodesic as calculated by another metric. Our paradigm learns the elastic metric (parameterized by $a$) that best models the data trajectory as a geodesic on the manifold of discrete curves. Right: true cell trajectory overlaid with 1) cells predicted by a regression which utilizes our paradigm’s learned metric parameter ($a*$) 2) cells predicted by a square-root-velocity (SRV) regression. Regression predictions using the SRV metric (red) do not match the data trajectory (blue), but our algorithm’s $a*$ predicts the data trajectory perfectly: our prediction (green) perfectly overlays the data trajectory (blue).
 
 ### Elastic Metric ###
