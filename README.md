@@ -16,10 +16,9 @@ Official implementation of the paper “Regression-Based Elastic Metric Learning
 Left: A trajectory may follow a geodesic as calculated by one metric but not follow a geodesic as calculated by another metric. Our paradigm learns the elastic metric (parameterized by a) that best models the data trajectory as a geodesic on the manifold of discrete curves. Right: true cell trajectory overlaid with 1) cells predicted by a regression which utilizes our paradigm’s learned metric parameter (a*) 2) cells predicted by a square-root-velocity (SRV) regression. Regression predictions using the SRV metric (red) do not match the data trajectory (blue), but our algorithm’s a* predicts the data trajectory perfectly: our prediction (green) perfectly overlays the data trajectory (blue).
 
 ### Elastic Metric ###
-- We consider a family of elastic metrics
-[given by]{https://www.researchgate.net/publication/225134644_On_Shape_of_Plane_Elastic_Curves} $g^{a, b}_c(h, k) = a^2\int_{0}^1\langle D_sh, N\rangle\langle D_sk, N\rangle ds + b^2 \int_{0}^1\langle D_sh, T\rangle\langle D_sk, T\rangle ds$
+- We consider a family of elastic metrics $\href{https://www.researchgate.net/publication/225134644_On_Shape_of_Plane_Elastic_Curves}{given by}$ $g^{a, b}_c(h, k) = a^2\int_{0}^1\langle D_sh, N\rangle\langle D_sk, N\rangle ds + b^2 \int_{0}^1\langle D_sh, T\rangle\langle D_sk, T\rangle ds$
 - We use the elastic metric implementation in
-[Geomstats]{https://geomstats.github.io/}.
+$\href{https://geomstats.github.io/}{Geomstats}$.
 - The elastic metric is parameterized by $a$ and $b$ which quantify how much two shapes are "stretched" or "bent" compared to each other, respectively.
 - Changing $a$ and $b$ of the elastic metric changes the distance between various points on the manifold of discrete curves: the space where we analyze curves. As such, changing $a$ and $b$ changes the nature of geodesics on the manifold of discrete curves.
 
