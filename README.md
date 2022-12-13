@@ -10,7 +10,7 @@ Official implementation of the paper “Regression-Based Elastic Metric Learning
 
 ## 🎤 See our Interview on Machine Learning Street Talk! ##
 
-[![MLST Interview](/images/interview.tiff)](https://www.youtube.com/watch?v=24u6CTV4t1k)
+[![MLST Interview](/images/interview.jpg)](https://www.youtube.com/watch?v=24u6CTV4t1k)
 
 ## ⭐️ Overview of Goals ##
 
