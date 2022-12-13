@@ -8,6 +8,10 @@ Official implementation of the paper “Regression-Based Elastic Metric Learning
 
 ![NeurIPS Poster](/images/poster.jpg)
 
+## 🎤 See our Interview on Machine Learning Street Talk! ##
+
+[![MLST Interview](/images/interview.tiff)](https://www.youtube.com/watch?v=24u6CTV4t1k)
+
 ## ⭐️ Overview of Goals ##
 
 - Regression-Based Elastic Metric Learning is a machine learning tool designed to improve analysis of discrete parameterizations of 2D cures changing over time.
